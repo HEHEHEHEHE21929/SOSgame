@@ -1,0 +1,16 @@
+/* County atlas and optional challenge-board styling. */
+.map-window{position:relative;overflow:hidden;background:linear-gradient(145deg,#172e4a,#203e5d)}
+.map-window .titlebar{color:#ffe49b}
+#map{height:auto;max-height:none;aspect-ratio:7/5;touch-action:manipulation;cursor:crosshair}
+.map-legend{color:#c4d2df}
+.mission-board{margin-top:16px;padding:13px;background:linear-gradient(135deg,#182744,#253b5d);border:2px solid #6f86a8;box-shadow:3px 3px 0 #0b1428}
+.mission-board h3{margin:0 0 5px!important;padding-bottom:7px!important;color:#ffe08b!important;border-bottom:1px solid #60789a!important;font-size:15px!important}
+.mission-intro{margin:5px 0 10px!important;color:#c7d2e1;font-size:11px}
+.mission-card{margin:8px 0;padding:9px;background:#10203a;border:1px solid #50688a}
+.mission-card.complete{border-color:#78c39c;background:#183c3b}
+.mission-heading{display:flex;justify-content:space-between;gap:8px;color:#f7ecd4;font-size:12px}
+.mission-heading span{color:#ffdc81;font-size:10px;white-space:nowrap}
+.mission-card p{margin:4px 0 7px!important;color:#bdc9dc;font-size:11px}
+.mission-track{height:7px;overflow:hidden;background:#080f20;border:1px solid #7084a2}
+.mission-track i{display:block;height:100%;background:linear-gradient(90deg,#49a879,#f0cf75);transition:width .25s ease}
+@media(max-width:620px){.mission-board{margin-top:12px;padding:10px}}

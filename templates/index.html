@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/retro.css">
   <link rel="stylesheet" href="/static/figures.css">
+  <link rel="stylesheet" href="/static/world.css">
 </head>
 <body>
   <header id="top" class="topbar" aria-label="Game controls"></header>
@@ -16,9 +17,9 @@
     <section class="layout" aria-label="Game board">
       <div class="window map-window">
         <div class="titlebar">HUNGARY · COUNTY MAP</div>
-        <canvas id="map" width="420" height="300" aria-label="Clickable map of Hungary and its 19 counties and Budapest" role="img" tabindex="0"></canvas>
+        <canvas id="map" width="420" height="300" aria-label="Clickable Hungary map" role="img" tabindex="0"></canvas>
         <div id="info" class="county-info" aria-live="polite">Select a county to inspect its profile.</div>
-        <div class="map-legend"><span></span> County winner · simplified game visualization</div>
+        <div class="map-legend"><span></span> Constituency winners shown after the simulated election · county layout is illustrative</div>
       </div>
       <section id="panel" class="window side-panel" aria-live="polite" aria-label="Game information and actions"></section>
     </section>
@@ -28,5 +29,6 @@
   <script src="/static/tutorial.js" defer></script>
   <script src="/static/game.js" defer></script>
   <script src="/static/figures.js" defer></script>
+  <script src="/static/world.js" defer></script>
 </body>
 </html>
