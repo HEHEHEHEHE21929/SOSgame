@@ -1,21 +1,32 @@
-/* Fit the game to a desktop viewport; keep long panels internally scrollable. */
-:root{--topbar-height:76px}
+/* Responsive single-screen dashboard and refined, legible game surfaces. */
+:root{--screen-gap:clamp(8px,1.15vw,18px)}
 html,body{width:100%;height:100%;min-height:0}
-body{overflow:hidden}
-.topbar{min-height:56px;max-height:88px;padding-top:7px;padding-bottom:7px;overflow:visible}
-main{width:100%;height:calc(100dvh - var(--topbar-height));max-width:1600px;margin:0 auto;padding:10px 14px;overflow:hidden}
-.layout{height:100%;min-height:0;grid-template-columns:minmax(0,1.22fr) minmax(340px,.9fr);gap:12px;align-items:stretch}
+body{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.topbar{position:relative;top:auto;z-index:5;flex:0 0 auto;min-height:0;max-height:none;gap:6px;padding:clamp(6px,1vh,12px) clamp(10px,2vw,26px);box-shadow:0 4px 14px #0005}
+main{flex:1 1 auto;width:100%;height:auto;min-height:0;max-width:1600px;margin:0 auto;padding:var(--screen-gap);overflow:hidden}
+.layout{height:100%;min-height:0;grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr);gap:var(--screen-gap);align-items:stretch}
 .map-window,.side-panel{height:100%;min-height:0;min-width:0}
-.map-window{display:grid;grid-template-rows:auto minmax(130px,1fr) auto auto;overflow:hidden}
-#map{width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;object-fit:contain}
-.county-info{min-height:48px;margin-top:8px;padding:8px 10px;font-size:13px}
-.map-legend{margin-top:5px;font-size:10px}
-.side-panel{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.event-log{position:fixed;left:14px;bottom:8px;z-index:4;width:min(42vw,520px);max-height:58px;overflow:hidden;margin:0;padding:7px 10px;opacity:.94;font-size:11px}
-.mission-board{margin-top:10px;padding:9px}
-.mission-card{margin:5px 0;padding:6px}
-.mission-card p{margin:2px 0 4px!important}
-@media(max-height:700px) and (min-width:761px){:root{--topbar-height:64px}.topbar{min-height:48px;max-height:66px;gap:5px}.readout{padding:4px 7px}.topbar button{padding:5px 7px}main{padding:7px 10px}.window{padding:11px}.titlebar{margin-bottom:7px}.county-info{min-height:40px;padding:5px 8px}.mission-board{margin-top:6px;padding:7px}.mission-intro{display:none}.mission-card p{font-size:10px}}
-@media(max-width:900px){html,body{height:auto;min-height:100%;overflow:auto}.topbar{position:sticky;top:0;max-height:none}.layout{height:auto;grid-template-columns:minmax(0,1fr)}.map-window{height:min(68vh,620px);min-height:400px}.side-panel{height:auto;max-height:62vh}.event-log{position:static;width:auto;max-height:100px;margin-top:10px}}
-@media(max-width:620px){main{height:auto;overflow:visible;padding:8px}.map-window{height:420px;min-height:360px}.side-panel{max-height:none}.event-log{margin-bottom:8px}}
-@media(prefers-reduced-motion:reduce){.mission-track i{transition:none}}
+.map-window{display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;overflow:hidden;padding:clamp(10px,1.3vw,18px)}
+.map-window .titlebar{margin-bottom:8px}
+#map{display:block;width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;object-fit:fill;touch-action:manipulation;cursor:crosshair}
+.map-interaction-hint{margin:5px 0 0;color:#d0daea;font-size:clamp(10px,.75vw,12px);line-height:1.35}
+.county-info{min-height:42px;margin-top:8px;padding:7px 10px;font-size:13px}
+.map-legend{margin-top:5px;font-size:10px;line-height:1.35}
+.side-panel{max-height:none;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.event-log{position:fixed;left:var(--screen-gap);bottom:var(--screen-gap);z-index:4;width:min(34vw,440px);max-height:54px;overflow:hidden;margin:0;padding:6px 9px;opacity:.94;font-size:10px;pointer-events:none}
+.layout>.window,.map-window,.side-panel{box-shadow:5px 6px 0 #070e20,0 12px 30px #0003}
+.map-window{background:linear-gradient(145deg,#213c63,#182744 70%)}
+.side-panel{background:linear-gradient(160deg,#24395a,#1b2c49)}
+.topbar .readout{white-space:nowrap}
+#tutorial-layer,.tutorial-layer{pointer-events:none}
+.tutorial-highlight{z-index:8!important;outline:3px solid #ffd45e!important;outline-offset:3px!important;box-shadow:0 0 0 6px #ffd45e44,0 0 22px 7px #ffd45e88!important;animation:tutorial-pulse 1.2s ease-in-out infinite alternate}
+#walkthrough{position:fixed;inset:0;z-index:60;pointer-events:none}
+.walkthrough-card{position:fixed;max-height:calc(100dvh - 24px);overflow:auto;padding:16px;background:#203253;color:#f7efd9;border:3px solid #f1ce7b;box-shadow:7px 7px 0 #060b16;pointer-events:auto}
+.walkthrough-count{margin:-16px -16px 11px;padding:7px 12px;background:#142442;color:#ffdf83;font-size:10px;font-weight:800;letter-spacing:.13em}
+.walkthrough-card h2{margin:0 0 8px;color:#ffdf83;font-size:18px;line-height:1.2}
+.walkthrough-card p{margin:8px 0;line-height:1.45}.walkthrough-instruction{color:#c3cee0;font-size:12px}
+.walkthrough-actions{display:flex;justify-content:space-between;gap:7px;margin-top:12px}.walkthrough-actions button{padding:6px 9px;font-size:12px}
+@media(max-height:680px) and (min-width:901px){.topbar{gap:4px;padding-top:4px;padding-bottom:4px}.readout{padding:4px 7px;font-size:11px}.topbar button{padding:5px 7px;font-size:11px}.map-legend{font-size:9px}.county-info{min-height:34px;padding:5px 8px}main{--screen-gap:7px}}
+@media(max-width:900px){html,body{height:auto;min-height:100%;overflow:auto}body{min-height:100dvh;height:auto}.topbar{position:sticky;top:0;max-height:none}.topbar .tabs{flex:1 0 100%;order:5}.layout{height:auto;grid-template-columns:minmax(0,1fr)}main{height:auto;overflow:visible}.map-window{height:clamp(340px,65vw,620px);grid-template-rows:auto minmax(200px,1fr) auto auto}.side-panel{height:auto;max-height:none}.event-log{position:static;width:auto;max-height:none;margin-top:10px;pointer-events:auto}}
+@media(max-width:620px){.topbar{padding:8px;gap:5px}.topbar .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.topbar .tabs button{width:100%;padding:6px 3px;font-size:11px}.topbar .readout{font-size:10px;padding:4px 6px}main{padding:8px}.map-window{height:clamp(330px,105vw,480px);padding:10px}.side-panel{padding:11px}.map-interaction-hint{font-size:10px}.walkthrough-card{max-height:calc(100dvh - 20px);padding:14px}.walkthrough-count{margin:-14px -14px 10px}.walkthrough-actions button{flex:1}}
+@media(prefers-reduced-motion:reduce){.tutorial-highlight{animation:none}}
