@@ -1,197 +1,39 @@
-/* Playable Civ-style interface and interactive schematic county map. */
+/* Interactive Hungarian county cartogram, campaign simulation and civics learning UI. */
 'use strict';
-const $ = (selector) => document.querySelector(selector);
-const api = (op, data) => fetch(`/api/${op}`, {
-  method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
-}).then(async response => {
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || 'Game request failed');
-  return payload;
-});
-let M = null, S = null, speed = 0, resumeSpeed = 1, lang = 'en', tab = 'Party';
-let selected = -1, muted = false, modalOpen = false, seenElectionYear = null, busy = false;
-const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const tilePositions = [[2,2],[3,2],[0,1],[1,1],[2,1],[2,2],[0,2],[1,3],[2,3],[3,4],[4,4],[4,3],[5,3],[5,4],[4,2],[3,0],[2,0],[4,0],[5,1],[5,0]];
-const $canvas = $('#map');
-const ctx = $canvas.getContext('2d');
-let audio = null;
-
-function sound(note=440, duration=.08) {
-  if (muted) return;
-  try {
-    audio ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (audio.state === 'suspended') audio.resume();
-    const osc = audio.createOscillator(), gain = audio.createGain();
-    osc.type = 'triangle'; osc.frequency.value = note;
-    gain.gain.setValueAtTime(.035, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + duration);
-    osc.connect(gain); gain.connect(audio.destination); osc.start(); osc.stop(audio.currentTime + duration);
-  } catch (_) { /* Audio is optional. */ }
-}
-function partyName(key) { return key === S?.party ? S.pname : (M.parties[key]?.n || key); }
-function partyColor(key) { return M.parties[key]?.c || '#777777'; }
-function calendar() { const n = S.m; return {year: 1991 + Math.floor(n / 12), month: n % 12}; }
-function electionCountdown() { let next = 39; while (next <= S.m) next += 36; return next - S.m; }
-function setSpeed(value) {
-  speed = Number(value); if (speed) resumeSpeed = speed;
-  renderTop();
-}
-
-function drawMap() {
-  if (!M || !$canvas) return;
-  const w = $canvas.width, h = $canvas.height;
-  ctx.fillStyle = '#000080'; ctx.fillRect(0, 0, w, h);
-  // Water and a tiny animated Balaton shimmer.
-  ctx.fillStyle = '#123b75'; ctx.fillRect(112, 204, 100, 8);
-  ctx.fillStyle = '#00aaaa'; ctx.fillRect(119 + (Math.floor(Date.now()/450)%8), 206, 35, 2);
-  const tileW = 62, tileH = 42, gapX = 4, gapY = 4, left = 18, top = 14;
-  M.counties.forEach((county, i) => {
-    const [gx, gy] = tilePositions[i] || [i % 6, Math.floor(i / 6)];
-    const x = left + gx * (tileW + gapX), y = top + gy * (tileH + gapY);
-    const winner = S?.wins?.[i];
-    ctx.fillStyle = winner ? partyColor(winner) : (county[1] === 'U' ? '#5555aa' : county[1] === 'R' ? '#557744' : '#887744');
-    ctx.fillRect(x, y, tileW, tileH);
-    // EGA-like dither texture and crisp county edges.
-    ctx.fillStyle = '#ffffff22';
-    for (let py = 3; py < tileH - 2; py += 6) for (let px = ((py/6|0)%2)*3 + 3; px < tileW - 2; px += 7) ctx.fillRect(x+px, y+py, 2, 2);
-    ctx.strokeStyle = i === selected ? '#ffff55' : '#eee'; ctx.lineWidth = i === selected ? 3 : 1;
-    ctx.strokeRect(x+.5, y+.5, tileW-1, tileH-1);
-    ctx.fillStyle = '#fff'; ctx.font = '8px monospace'; ctx.textAlign = 'center';
-    const label = county[0].length > 11 ? county[0].slice(0, 10) : county[0];
-    ctx.fillText(label, x + tileW/2, y + 23, tileW - 3);
-  });
-}
-$canvas.addEventListener('click', event => {
-  if (!M) return;
-  const rect = $canvas.getBoundingClientRect();
-  const px = (event.clientX - rect.left) * $canvas.width / rect.width;
-  const py = (event.clientY - rect.top) * $canvas.height / rect.height;
-  const tileW=62,tileH=42,gapX=4,gapY=4,left=18,top=14;
-  selected = M.counties.findIndex((county,i) => {
-    const [gx,gy]=tilePositions[i]||[i%6,Math.floor(i/6)];
-    const x=left+gx*(tileW+gapX),y=top+gy*(tileH+gapY);
-    return px>=x&&px<=x+tileW&&py>=y&&py<=y+tileH;
-  });
-  render(); sound(550);
-});
-
-function renderTop() {
-  if (!S) return;
-  const date = calendar();
-  const locale = lang === 'hu' ? 'hu-HU' : 'en-US';
-  const dateLabel = new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date(date.year,date.month,1));
-  $('#top').innerHTML = `<span class="readout"><b>${dateLabel}</b></span><span class="readout">Funds: ${Math.floor(S.money)} M Ft</span><span class="readout">Capital: ${S.cap.toFixed(1)}</span><span class="readout">Election in ${electionCountdown()} months</span><span class="spacer"></span>${[[0,'PAUSE'],[1,'1x'],[2,'2x'],[4,'4x']].map(([n,label])=>`<button data-speed="${n}" class="${speed===n?'active':''}">${label}</button>`).join('')}<span class="tabs">${['Game','Party','Campaign','Policy','Advisors','World'].map(name=>`<button data-tab="${name}" class="${tab===name?'active':''}">${name}</button>`).join('')}</span><button id="language">${lang==='en'?'English / Magyar':'Magyar / English'}</button><button id="mute">Sound: ${muted?'off':'on'}</button>`;
-  document.querySelectorAll('[data-speed]').forEach(button=>button.onclick=()=>setSpeed(button.dataset.speed));
-  document.querySelectorAll('[data-tab]').forEach(button=>button.onclick=()=>{tab=button.dataset.tab;render();});
-  $('#language').onclick=()=>{lang=lang==='en'?'hu':'en';render();};
-  $('#mute').onclick=()=>{muted=!muted;renderTop();};
-}
-function partyRows() {
-  return Object.entries(S.poll).sort((a,b)=>b[1]-a[1]).map(([party,share])=>`<div class="row"><span class="swatch" style="background:${partyColor(party)}"></span><b>${esc(partyName(party))}</b><span class="bar"><i style="width:${Math.min(100,share)}%;background:${partyColor(party)}"></i></span><span>${share.toFixed(1)}%</span></div>`).join('');
-}
-function mentorPanel() {
-  const mentor = M.mentors[S.mentor];
-  return `<h3>Mentor</h3><div class="advisor"><canvas class="portrait" width="56" height="56"></canvas><div><b>${esc(mentor.n)}</b><br><span class="small">${esc(mentor.facts.join(' · '))}</span></div></div><select id="mentor-select">${Object.entries(M.mentors).map(([id,item])=>`<option value="${esc(id)}" ${id===S.mentor?'selected':''}>${esc(item.n)}</option>`).join('')}</select><p class="small">${esc(mentor.learn)}</p>`;
-}
-function renderPanel() {
-  let html = '';
-  if (tab==='Party') html=`<h3>${esc(S.pname)} · ${esc(S.leader)}</h3><p>Difficulty: <b>${esc(M.difficulties[S.difficulty]?.name || 'Normal')}</b> · Support &amp; polls (simplified)</p>${partyRows()}<p><b>${S.seats}</b> seats · ${S.inpower?'Leading the government':'Opposition'} · 5% threshold</p>${mentorPanel()}`;
-  if (tab==='Campaign') html=`<h3>Campaign office</h3><p>${S.reg?'Candidates registered.':'Register candidates before the next election for full ballot access.'}</p><p>Choose an action. County selection applies campaign effort to that county.</p>${Object.entries(M.campaign).map(([id,[label,cost,gain]])=>`<button data-campaign="${esc(id)}">${esc(label)} · ${cost} M Ft</button> `).join('')}<p class="small">Repeated campaign actions have diminishing returns. County focus and party support are simplified game figures.</p>`;
-  if (tab==='Policy') html=`<h3>Government policy</h3>${S.inpower?M.policies.map(p=>`<div><button data-policy="${esc(p.id)}">${esc(p.label)} · ${p.cap} capital / ${p.cost} M Ft</button><p class="small">Helps: ${esc(p.win)}. Trade-off: ${esc(p.lose)}.</p></div>`).join(''):'<p>Your party must lead the government to enact policy.</p>'}`;
-  if (tab==='Advisors') html=`<h3>Advisors</h3><p>Mentor bonuses are small and situational; you can switch at any time.</p>${mentorPanel()}<button id="learn">Learn more</button><p class="small">Supporters and critics are summarized neutrally in the mentor card.</p>`;
-  if (tab==='World') html=`<h3>Election history</h3>${S.hist.length?S.hist.map(item=>`<p>${item.year}: ${item.share}% · ${item.seats} seats · government: ${esc(partyName(item.gov))}</p>`).join(''):'<p>First election is April 1994.</p>'}<p class="small">199 seats total: 106 constituency and 93 list seats. Threshold: 5%. All game results are simplified.</p>`;
-  if (tab==='Game') html=`<h3>Game options</h3><p>Time starts in January 1991 and ends in December 2030.</p><div class="file-controls"><button id="copy-save">Copy save code</button><button id="load-save">Paste save code</button><textarea id="save-box" rows="3" placeholder="Save code"></textarea></div><p><button id="new-game">New game</button></p><p class="small">The save is held in this browser. Copy it to keep a backup.</p>`;
-  $('#panel').innerHTML=html;
-  $('#mentor-select')?.addEventListener('change',()=>act('mentor',{mentor:$('#mentor-select').value}));
-  $('#learn')?.addEventListener('click',()=>alert(M.mentors[S.mentor].learn));
-  document.querySelectorAll('[data-campaign]').forEach(button=>button.onclick=()=>act('campaign',{action:button.dataset.campaign}));
-  document.querySelectorAll('[data-policy]').forEach(button=>button.onclick=()=>act('policy',{id:button.dataset.policy}));
-  $('#copy-save')?.addEventListener('click',copySave);
-  $('#load-save')?.addEventListener('click',loadSave);
-  $('#new-game')?.addEventListener('click',startMenu);
-  drawPortraits();
-}
-function drawPortraits(){document.querySelectorAll('.portrait').forEach(canvas=>{const c=canvas.getContext('2d');c.fillStyle='#55ffff';c.fillRect(0,0,56,56);c.fillStyle='#ffaa77';c.fillRect(18,9,20,22);c.fillStyle='#222';c.fillRect(18,6,20,7);c.fillRect(22,20,3,3);c.fillRect(32,20,3,3);c.fillStyle='#333399';c.fillRect(11,34,34,18);});}
-function render() {
-  if (!S) return;
-  renderTop(); renderPanel();
-  if (selected>=0) {
-    const [name,type,seats]=M.counties[selected];
-    const winner=S.wins?.[selected];
-    const support=S.poll[S.party] ?? 0;
-    $('#info').innerHTML=`<b>${esc(name)}</b> · ${{U:'city',R:'rural',M:'mixed'}[type]} county · ${seats} constituency seats<br>Player polling: ${support.toFixed(1)}% · ${winner?`Last simulated winner: ${esc(partyName(winner))}`:'No election held yet.'}`;
-  }
-  $('#log').innerHTML=`<b>${esc(S.flash||'Campaign journal')}</b><br>${S.log.slice(-4).map(esc).join('<br>')}`;
-  drawMap(); localStorage.setItem('magyar-politika-save',JSON.stringify(S));
-}
-async function act(op,data) {
-  try { S=await api(op,{...data,state:S}); sound(720); render(); checkOverlays(); }
-  catch(error) { alert(error.message); }
-}
-function openModal(html) { if(speed){resumeSpeed=speed;speed=0;} modalOpen=true; $('#modal').innerHTML=`<section class="dialog">${html}</section>`; $('#modal').style.display='flex'; renderTop(); }
-function closeModal() { $('#modal').style.display='none'; modalOpen=false; if(S){render(); if(resumeSpeed) setSpeed(resumeSpeed); checkOverlays();} }
-function startMenu() {
-  if (!M) return;
-  const startingParties=Object.entries(M.parties).filter(([,p])=>p.f<=1991);
-  openModal(`<h2>MAGYAR POLITIKA</h2><p>Lead a party from January 1991 to December 2030. Choose a difficulty and starting party.</p><label>Difficulty <select id="difficulty">${Object.entries(M.difficulties).map(([key,item])=>`<option value="${key}" ${key==='normal'?'selected':''}>${esc(item.name)} — ${key==='easy'?'more starting funds and a modest election boost':key==='hard'?'fewer funds and tougher elections':'balanced starting conditions'}</option>`).join('')}</select></label><p>Starting party</p><div class="choices">${startingParties.map(([key,item])=>`<button data-start-party="${esc(key)}" style="border-left:8px solid ${item.c}">${esc(item.n)}</button>`).join('')}<button data-start-party="CUSTOM">Found a custom party</button></div><label>Leader <select id="leader-choice"></select></label><label id="custom-label" hidden>Custom party name <input id="custom-name" maxlength="40" value="My Party"></label><label>Mentor <select id="start-mentor">${Object.entries(M.mentors).map(([key,item])=>`<option value="${key}" ${key==='magyar'?'selected':''}>${esc(item.n)}</option>`).join('')}</select></label><div class="choices"><button id="start-game">Start in 1991</button></div>`);
-  let choice='MDF';
-  const setChoice=key=>{choice=key;const opts=M.leaders[key]||['Party founder'];$('#leader-choice').innerHTML=opts.map(value=>`<option>${esc(value)}</option>`).join('');$('#custom-label').hidden=key!=='CUSTOM';document.querySelectorAll('[data-start-party]').forEach(b=>b.classList.toggle('selected',b.dataset.startParty===key));};
-  document.querySelectorAll('[data-start-party]').forEach(button=>button.onclick=()=>setChoice(button.dataset.startParty));
-  setChoice(choice);
-  $('#start-game').onclick=async()=>{
-    try {
-      S=await api('new',{party:choice,difficulty:$('#difficulty').value,leader:$('#leader-choice').value,pname:choice==='CUSTOM'?$('#custom-name').value:'',mentor:$('#start-mentor').value});
-      tab='Party';selected=0;resumeSpeed=1;closeModal();
-    } catch(error){alert(error.message);}
-  };
-}
-async function copySave() {
-  const code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));
-  $('#save-box').value=code;
-  try { await navigator.clipboard.writeText(code); S.flash='Save code copied.';render(); } catch (_) { $('#save-box').select();document.execCommand('copy'); }
-}
-function loadSave() {
-  try { const code=$('#save-box').value.trim();const decoded=decodeURIComponent(escape(atob(code)));const next=JSON.parse(decoded);if(typeof next.m!=='number'||!M.parties[next.party])throw new Error();S=next;selected=0;render();checkOverlays(); }
-  catch(_){alert('That save code could not be loaded.');}
-}
-function checkOverlays() {
-  if(modalOpen||!S)return;
-  if(S.over){openModal(`<h2>${S.over==='dissolved'?'Party dissolved':'End of 2030'}</h2><p>Final score: ${S.score}</p><p>The simplified simulation has ended.</p><div class="choices"><button id="restart">New game</button></div>`);$('#restart').onclick=startMenu;return;}
-  if(S.event){
-    const ev=S.event;
-    openModal(`<h2>${esc(ev.title)}</h2><p>${esc(ev.text)}</p><div class="choices">${ev.choices.map((choice,index)=>`<button data-choice="${index}">${esc(choice[0])}</button>`).join('')}</div>`);
-    document.querySelectorAll('[data-choice]').forEach(button=>button.onclick=async()=>{try{S=await api('choice',{state:S,i:Number(button.dataset.choice)});closeModal();}catch(error){alert(error.message);}});
-    return;
-  }
-  if(S.result&&seenElectionYear!==S.result.year){
-    seenElectionYear=S.result.year;
-    const result=S.result;
-    const rows=Object.entries(result.seats).sort((a,b)=>b[1]-a[1]).map(([party,count])=>`<div class="seat-row"><b>${esc(partyName(party))}</b><span class="bar"><i data-width="${count/199*100}" style="background:${partyColor(party)}"></i></span><b>${count}</b></div>`).join('');
-    openModal(`<h2>Election night · ${result.year}</h2>${rows}<div class="result-banner">Government: ${esc(partyName(result.gov))}${result.coalition?` + ${esc(partyName(result.coalition))}`:''} · ${result.maj} seats needed for a majority${result.supermaj?' · two-thirds majority':''}</div><p>Your party: ${result.shares[S.party]||0}% · ${S.seats} seats. Figures are simplified.</p><div class="choices"><button id="election-ok">Continue</button></div>`);
-    setTimeout(()=>document.querySelectorAll('[data-width]').forEach(bar=>bar.style.width=`${bar.dataset.width}%`),40);
-    $('#election-ok').onclick=closeModal; return;
-  }
-}
-async function tick() {
-  if(S&&speed&&!busy&&!modalOpen&&!S.over&&!S.event){
-    busy=true;
-    try { S=await api('tick',{state:S});render();checkOverlays(); }
-    catch(error){console.error(error);S.flash='Could not advance the game. Check your connection.';render();}
-    finally{busy=false;}
-  }
-  setTimeout(tick,700/Math.max(1,speed));
-}
-document.addEventListener('keydown',event=>{
-  if(!S||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
-  if(event.code==='Space'){event.preventDefault();setSpeed(speed?0:resumeSpeed||1);}
-  if(event.key==='1')setSpeed(1);if(event.key==='2')setSpeed(2);if(event.key==='3')setSpeed(4);
-});
-fetch('/api/meta').then(response=>{if(!response.ok)throw new Error();return response.json();}).then(data=>{
-  M=data;
-  const saved=localStorage.getItem('magyar-politika-save');
-  if(saved){try{S=JSON.parse(saved);}catch(_){localStorage.removeItem('magyar-politika-save');}}
-  if(S){selected=0;render();checkOverlays();}else startMenu();
-  drawMap();setInterval(()=>{if(!matchMedia('(prefers-reduced-motion: reduce)').matches)drawMap();},350);
-  tick();
-}).catch(error=>{console.error(error);$('#panel').textContent='Game data could not load. Check that the Render service is running the latest deployment.';});
+const $=s=>document.querySelector(s);
+const api=(op,data)=>fetch(`/api/${op}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(async r=>{const x=await r.json();if(!r.ok)throw Error(x.error||'Game request failed');return x;});
+let M=null,S=null,speed=0,resumeSpeed=1,tab='Party',selected=-1,muted=false,modalOpen=false,seenElectionYear=null,busy=false;
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+// Hand-drawn county cartogram: each polygon is positioned to reflect its real region and neighbours.
+const shapes=[[[169,118],[193,117],[198,141],[179,151],[163,140]],[[147,91],[174,84],[194,94],[193,116],[169,118],[163,140],[143,132],[132,112]],[[30,74],[65,61],[91,68],[96,91],[73,100],[48,96]],[[97,80],[128,73],[141,88],[132,112],[108,109],[96,92]],[[107,119],[132,112],[143,132],[135,154],[111,151],[99,137]],[[137,136],[163,140],[179,151],[165,174],[141,171],[130,153]],[[22,119],[48,113],[62,131],[54,153],[28,149],[17,135]],[[25,157],[54,153],[68,172],[58,195],[32,191],[19,174]],[[60,176],[87,166],[104,181],[98,207],[69,211],[57,196]],[[100,157],[126,154],[140,171],[131,192],[108,194],[98,180]],[[102,198],[130,193],[146,210],[134,234],[108,231],[96,216]],[[69,216],[96,213],[108,231],[101,253],[73,257],[57,239]],[[148,176],[170,179],[182,198],[168,215],[145,210],[134,194]],[[184,197],[207,189],[225,204],[220,228],[196,235],[178,217]],[[163,151],[184,145],[201,158],[197,181],[180,191],[166,176]],[[120,64],[145,57],[160,69],[151,87],[130,91],[114,79]],[[94,47],[118,45],[128,61],[117,76],[96,73],[84,59]],[[163,47],[194,43],[212,57],[205,78],[181,82],[158,68]],[[207,105],[232,99],[246,115],[240,137],[218,143],[199,130]],[[221,73],[248,66],[266,80],[261,101],[238,110],[222,96]]];
+const canvas=$('#map'),ctx=canvas.getContext('2d');let audio=null;
+function sound(n=480){if(muted)return;try{audio||=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='triangle';o.frequency.value=n;g.gain.setValueAtTime(.035,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.1);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.1);}catch(_){}}
+function partyName(p){return p===S?.party?S.pname:(M.parties[p]?.n||p)}function partyColor(p){return M.parties[p]?.c||'#888'}
+function dateParts(){return{year:1991+Math.floor(S.m/12),month:S.m%12}}function monthYear(){const d=dateParts();return `${monthNames[d.month]} ${d.year}`}
+function countdown(){let n=39;while(n<=S.m)n+=36;return n-S.m}
+function setSpeed(n){speed=Number(n);if(speed)resumeSpeed=speed;renderTop()}
+function renderTop(){if(!S)return;$('#top').innerHTML=`<span class="readout"><b>${monthYear()}</b></span><span class="readout">Funds: ${Math.floor(S.money)} M Ft</span><span class="readout">Capital: ${S.cap.toFixed(1)}</span><span class="readout">Election in ${countdown()} months</span><span class="spacer"></span>${[[0,'PAUSE'],[1,'1x'],[2,'2x'],[4,'4x']].map(([n,l])=>`<button data-speed="${n}" class="${speed===n?'active':''}">${l}</button>`).join('')}<span class="tabs">${['Game','Party','Campaign','Policy','Advisors','World'].map(t=>`<button data-tab="${t}" class="${tab===t?'active':''}">${t}</button>`).join('')}</span><button id="mute">Sound ${muted?'off':'on'}</button>`;document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>setSpeed(b.dataset.speed));document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});$('#mute').onclick=()=>{muted=!muted;renderTop()}}
+function drawMap(){if(!M)return;ctx.fillStyle='#153865';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#568cc0';ctx.beginPath();ctx.ellipse(87,218,40,9,-.08,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='10px monospace';ctx.fillText('Lake Balaton',43,239);M.counties.forEach((c,i)=>{const pts=shapes[i];if(!pts)return;const win=S?.wins?.[i];ctx.beginPath();pts.forEach(([x,y],j)=>j?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=win?partyColor(win):(c[1]==='U'?'#7777bb':c[1]==='R'?'#64834e':'#a48c54');ctx.fill();ctx.lineWidth=i===selected?3:1.4;ctx.strokeStyle=i===selected?'#ffff55':'#f2e7c9';ctx.stroke();const cx=pts.reduce((a,p)=>a+p[0],0)/pts.length,cy=pts.reduce((a,p)=>a+p[1],0)/pts.length;ctx.fillStyle='#fff';ctx.font=i===0?'bold 8px monospace':'7px monospace';ctx.textAlign='center';ctx.fillText(i===0?'Budapest':c[0].replace('Győr-Moson-Sopron','Győr-M-S').replace('Komárom-Esztergom','Komárom-E.').replace('Jász-Nagykun-Szolnok','Jász-N-Sz.').replace('Borsod-Abaúj-Zemplén','Borsod-A-Z.').replace('Szabolcs-Szatmár-Bereg','Szabolcs-Sz-B.'),cx,cy+2,43)});ctx.fillStyle='#fff';ctx.font='bold 11px monospace';ctx.textAlign='left';ctx.fillText('HUNGARY · 19 COUNTIES + BUDAPEST',12,286)}
+function hit(x,y){for(let i=shapes.length-1;i>=0;i--){const pts=shapes[i];let inside=false;for(let a=0,b=pts.length-1;a<pts.length;b=a++){const [xi,yi]=pts[a],[xj,yj]=pts[b];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside}if(inside)return i}return -1}
+canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect();selected=hit((e.clientX-r.left)*canvas.width/r.width,(e.clientY-r.top)*canvas.height/r.height);render();sound(600)});
+function rows(){return Object.entries(S.poll).sort((a,b)=>b[1]-a[1]).map(([p,v])=>`<div class="row"><span class="swatch" style="background:${partyColor(p)}"></span><b>${esc(partyName(p))}</b><span class="bar"><i style="width:${Math.min(100,v)}%;background:${partyColor(p)}"></i></span>${v.toFixed(1)}%</div>`).join('')}
+function mentorHtml(){const m=M.mentors[S.mentor];return `<h3>Mentor</h3><select id="mentor-select">${Object.entries(M.mentors).map(([id,x])=>`<option value="${id}" ${id===S.mentor?'selected':''}>${esc(x.n)}</option>`).join('')}</select><p>${esc(m.learn)}</p><details><summary>Historical notes</summary><ul>${m.facts.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`}
+function renderPanel(){let h='';if(tab==='Party')h=`<h3>${esc(S.pname)} · ${esc(S.leader)}</h3><p>Difficulty: ${esc(M.difficulties[S.difficulty]?.name||'Normal')} · simplified polls, not real forecasts</p>${rows()}<p><b>${S.seats}</b> seats · ${S.inpower?'Government':'Opposition'} · next election in ${countdown()} months</p>${mentorHtml()}`;
+if(tab==='Campaign'){const county=selected>=0?M.counties[selected]:null;h=`<h3>Campaign office</h3><p>${county?`Target: <b>${esc(county[0])}</b>. Your local candidate: ${esc(S.county_mps?.[String(selected)]||'none assigned')}`:'Select a county on the map to recruit a local candidate or target a rally.'}</p>${county?`<form id="mp-form"><input id="mp-name" maxlength="60" placeholder="Local MP candidate name" value="${esc(S.county_mps?.[String(selected)]||'')}"><button>Recruit MP · 2 M Ft</button></form>`:''}<p>${S.reg?'Candidates registered for next election.':'Register candidates before election for full ballot access.'}</p>${Object.entries(M.campaign).map(([id,[label,cost]])=>`<button data-campaign="${id}">${esc(label)} · ${cost} M Ft</button> `).join('')}<p>County-targeted campaigning gives a small constituency advantage. National campaigning raises party support.</p>`}
+if(tab==='Policy')h=`<h3>Government policy</h3><p>${S.inpower?'You control government. Selecting a funded item enacts it immediately.':'You need to lead government to enact policies.'}</p>${S.inpower?M.policies.map(p=>`<div><button data-policy="${p.id}">${esc(p.label)} · ${p.cap} capital / ${p.cost} M Ft</button><details><summary>Learn what this policy does</summary><p>${esc(p.win)} may benefit; ${esc(p.lose)} may bear the trade-off. It shifts simulated support in urban/rural voters.</p></details></div>`).join(''):''}<h4>Enacted policies</h4>${S.policy_history?.length?S.policy_history.slice().reverse().map(p=>`<p>✅ ${esc(p.year)} — ${esc(p.label)}</p>`).join(''):'<p>No policies enacted yet.</p>'}`;
+if(tab==='Advisors')h=`<h3>Learning center</h3>${mentorHtml()}<details open><summary>How elections work</summary><p>Poll support is translated into 199 simplified seats: county constituency contests plus 93 national-list seats. Parties below 5% do not normally receive seats. Register candidates before election day to avoid a ballot penalty.</p></details><details><summary>How to play</summary><p>Campaigns cost funds and raise support. Funds change monthly. Elections occur every three years. Governing unlocks policy choices, which trade money and political capital for voter-group effects.</p></details><details><summary>County MPs</summary><p>Open Campaign, click a county, and recruit a local candidate. Local organizers create a small edge in that county's next contest.</p></details>`;
+if(tab==='World')h=`<h3>Election history & civics</h3>${S.hist.length?S.hist.map(x=>`<p>${x.year}: ${x.share}% support · ${x.seats} seats · government ${esc(partyName(x.gov))}</p>`).join(''):'<p>First election is April 1994.</p>'}<p>Seat counts and political data are simplified game mechanics for learning, not official results.</p>`;
+if(tab==='Game')h=`<h3>Game options</h3><p>January 1991–December 2030. Speed controls pause or advance time.</p><button id="copy-save">Copy save code</button> <button id="load-save">Load save code</button><textarea id="save-box" rows="3" placeholder="Paste save code here"></textarea><p><button id="new-game">New game</button></p>`;
+$('#panel').innerHTML=h;$('#mentor-select')?.addEventListener('change',()=>act('mentor',{mentor:$('#mentor-select').value}));document.querySelectorAll('[data-campaign]').forEach(b=>b.onclick=()=>act('campaign',{action:b.dataset.campaign,...(selected>=0?{county:selected}:{})}));document.querySelectorAll('[data-policy]').forEach(b=>b.onclick=()=>act('policy',{id:b.dataset.policy}));$('#mp-form')?.addEventListener('submit',e=>{e.preventDefault();act('appoint',{county:selected,name:$('#mp-name').value})});$('#copy-save')?.addEventListener('click',copySave);$('#load-save')?.addEventListener('click',loadSave);$('#new-game')?.addEventListener('click',startMenu)}
+function render(){if(!S)return;renderTop();renderPanel();if(selected>=0){const[n,t,seats]=M.counties[selected];$('#info').innerHTML=`<b>${esc(n)}</b> · ${{U:'urban',R:'rural',M:'mixed'}[t]} county · ${seats} seats · polling ${Number(S.poll[S.party]||0).toFixed(1)}%<br>Local MP: ${esc(S.county_mps?.[String(selected)]||'not recruited')} · ${S.wins?.[selected]?`last winner ${esc(partyName(S.wins[selected]))}`:'no election yet'}`}$('#log').innerHTML=`<b>${esc(S.flash||'Campaign journal')}</b><br>${(S.log||[]).slice(-4).map(esc).join('<br>')}`;drawMap();localStorage.setItem('magyar-politika-save',JSON.stringify(S))}
+async function act(op,data){try{S=await api(op,{...data,state:S});sound(700);render();checkOverlays()}catch(e){alert(e.message)}}
+function openModal(html){if(speed){resumeSpeed=speed;speed=0}modalOpen=true;$('#modal').innerHTML=`<section class="dialog">${html}</section>`;$('#modal').style.display='flex'}
+function closeModal(){ $('#modal').style.display='none';modalOpen=false;if(S){render();if(resumeSpeed)setSpeed(resumeSpeed);checkOverlays()}}
+function startMenu(){openModal(`<h2>MAGYAR POLITIKA</h2><p>Lead a party through four decades of Hungarian political history. All results are simplified.</p><label>Difficulty <select id="difficulty">${Object.entries(M.difficulties).map(([k,v])=>`<option value="${k}" ${k==='normal'?'selected':''}>${esc(v.name)}</option>`).join('')}</select></label><p>Starting party</p><div class="choices">${Object.entries(M.parties).filter(([,p])=>p.f<=1991).map(([k,p])=>`<button data-party="${k}">${esc(p.n)}</button>`).join('')}</div><label>Party leader <input id="leader-name" maxlength="60" placeholder="Your leader's name"></label><label>Custom party name <input id="party-name" maxlength="40" value="My Party"></label><label>Mentor <select id="start-mentor">${Object.entries(M.mentors).map(([k,v])=>`<option value="${k}">${esc(v.n)}</option>`).join('')}</select></label><div class="choices"><button id="start-game">Start in 1991</button></div>`);let party='MDF';document.querySelectorAll('[data-party]').forEach(b=>b.onclick=()=>{party=b.dataset.party;document.querySelectorAll('[data-party]').forEach(x=>x.classList.toggle('selected',x===b))});$('#start-game').onclick=async()=>{try{S=await api('new',{party,difficulty:$('#difficulty').value,leader:$('#leader-name').value,pname:party==='CUSTOM'?$('#party-name').value:M.parties[party].n,mentor:$('#start-mentor').value});tab='Party';selected=0;resumeSpeed=1;closeModal()}catch(e){alert(e.message)}}}
+function checkOverlays(){if(modalOpen||!S)return;if(S.over){openModal(`<h2>${S.over==='dissolved'?'Party dissolved':'End of simulation'}</h2><p>Final score: ${S.score}</p><button id="restart">New game</button>`);$('#restart').onclick=startMenu;return}if(S.event){const ev=S.event;openModal(`<h2>${esc(ev.title)}</h2><p>${esc(ev.text)}</p><div class="choices">${ev.choices.map((c,i)=>`<button data-choice="${i}">${esc(c[0])}</button>`).join('')}</div>`);document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=async()=>{S=await api('choice',{state:S,i:Number(b.dataset.choice)});closeModal()});return}if(S.result&&seenElectionYear!==S.result.year){seenElectionYear=S.result.year;const r=S.result;openModal(`<h2>Election night · ${r.year}</h2>${Object.entries(r.seats).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`<p>${esc(partyName(p))}: ${n} seats · ${(r.shares[p]||0)}%</p>`).join('')}<p class="result-banner">Government: ${esc(partyName(r.gov))}${r.coalition?` + ${esc(partyName(r.coalition))}`:''} · ${r.maj} seats for a majority</p><p>${S.inpower?'You lead the government. Policy options are now available.':'You are in opposition.'}</p><button id="election-ok">Continue</button>`);$('#election-ok').onclick=closeModal}}
+async function copySave(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));$('#save-box').value=code;try{await navigator.clipboard.writeText(code);S.flash='Save code copied';render()}catch(_){$('#save-box').select()}}
+function loadSave(){try{const next=JSON.parse(decodeURIComponent(escape(atob($('#save-box').value.trim()))));if(typeof next.m!=='number'||!M.parties[next.party])throw Error();S=next;selected=0;render()}catch(_){alert('Invalid save code')}}
+async function tick(){if(S&&speed&&!busy&&!modalOpen&&!S.over&&!S.event){busy=true;try{S=await api('tick',{state:S});render();checkOverlays()}catch(e){console.error(e)}finally{busy=false}}setTimeout(tick,700/Math.max(1,speed))}
+document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();setSpeed(speed?0:resumeSpeed)}if(e.key==='1')setSpeed(1);if(e.key==='2')setSpeed(2);if(e.key==='3')setSpeed(4)});
+fetch('/api/meta').then(r=>r.json()).then(data=>{M=data;try{S=JSON.parse(localStorage.getItem('magyar-politika-save'))}catch(_){S=null}if(S){S.county_mps||={};S.county_support||={};S.policy_history||=[];selected=0;render();checkOverlays()}else startMenu();drawMap();setInterval(()=>{if(!matchMedia('(prefers-reduced-motion: reduce)').matches)drawMap()},500);tick()}).catch(()=>$('#panel').textContent='Could not load game data; refresh after the game deployment completes.');
