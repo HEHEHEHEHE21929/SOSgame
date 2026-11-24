@@ -1,0 +1,6 @@
+# Add after LEADERS definition in game/data.py
+MP_CANDIDATES = [
+    "Antall József", "Horn Gyula", "József Torgyán", "László Kövér",
+    "Viktor Orbán", "Gergely Gulyás", "Katalin Novák", "László Surján",
+    "Péter Magyar",
+]
