@@ -22,7 +22,6 @@
       const response=await fetch(`/api/${op}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,state})});
       const next=await response.json();if(!response.ok)throw new Error(next.error||'That action did not work.');
       localStorage.setItem(SAVE_KEY,JSON.stringify(next));
-      // Reload through the existing game bootstrap so its private in-memory state stays in sync.
       window.location.reload();
     }catch(error){alert(error.message);requestBusy=false;if(button){button.disabled=false;button.classList.remove('is-working');}}
   }
@@ -39,7 +38,6 @@
       perform('appoint',{county,name},form.querySelector('button'));
     };
     form.addEventListener('submit',submit,true);
-    // The base UI wires this action as a click callback, so handle that path too.
     form.addEventListener('click',event=>{
       const button=event.target.closest('button');if(!button)return;
       event.preventDefault();event.stopImmediatePropagation();submit(event);
@@ -70,7 +68,6 @@
       event.preventDefault();event.stopImmediatePropagation();
       const action=button.dataset.campaign;
       const county=countyIndex();
-      // Pass the clicked county to local actions. Registration and polling are national operations.
       const local=['posters','tv','social','rally','vol'].includes(action);
       perform('campaign',{action,...(local&&county!==null?{county}: {})},button);
     },true);
@@ -88,7 +85,9 @@
     }).join('');
     const facts=(mentor.facts||[]).slice(0,3).map(fact=>`<li>${escapeHtml(fact)}</li>`).join('');
     const advice=select.value==='antall'?'Build a broad coalition and protect your political capital.':select.value==='horn'?'Use media strategically; make sure your budget can sustain promises.':select.value==='orban'?'Pair volunteer organizing with a strong county ground game.':'Pair anti-corruption policy with volunteer organizing; track the costs.';
-    card.innerHTML=`<h4>Advisor briefing · ${escapeHtml(mentor.n)}</h4><p>${escapeHtml(mentor.learn||advice)}</p><p><b>Practical tip:</b> ${escapeHtml(advice)}</p>${bonuses?`<ul class="advisor-bonuses">${bonuses}</ul>`:''}${facts?`<details><summary>Historical context</summary><ul>${facts}</ul></details>`:''}`;
+    const html=`<h4>Advisor briefing · ${escapeHtml(mentor.n)}</h4><p>${escapeHtml(mentor.learn||advice)}</p><p><b>Practical tip:</b> ${escapeHtml(advice)}</p>${bonuses?`<ul class="advisor-bonuses">${bonuses}</ul>`:''}${facts?`<details><summary>Historical context</summary><ul>${facts}</ul></details>`:''}`;
+    // This script observes DOM changes; avoid rewriting identical contents or it triggers an infinite observer loop.
+    if(card.dataset.rendered!==html){card.innerHTML=html;card.dataset.rendered=html;}
     select.onchange=()=>{
       const current=loadState();if(!current)return;
       fetch('/api/mentor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mentor:select.value,state:current})})
@@ -100,10 +99,12 @@
     const panel=$('#panel');if(!panel)return;
     const flash=loadState()?.flash;if(!flash||!/(campaign|rally|volunteer|posters|ads|polling|candidates registered)/i.test(flash))return;
     let report=$('.campaign-report',panel);if(!report){report=document.createElement('div');report.className='campaign-report';panel.prepend(report);}
-    report.innerHTML=`<span class="report-icon" aria-hidden="true">✦</span><span><b>Field report</b><br>${escapeHtml(flash)}</span>`;
+    const html=`<span class="report-icon" aria-hidden="true">✦</span><span><b>Field report</b><br>${escapeHtml(flash)}</span>`;
+    // Same observer-safety guard: don't generate another mutation for unchanged report text.
+    if(report.dataset.rendered!==html){report.innerHTML=html;report.dataset.rendered=html;}
   }
   function refresh(){bindCandidateForm();addActionDescriptions();advisorCoach();addCampaignReport();}
-  fetch('/api/meta').then(response=>response.json()).then(data=>{meta=data;refresh();});
+  fetch('/api/meta').then(response=>response.json()).then(data=>{meta=data;refresh();}).catch(error=>console.error('Could not load playability metadata:',error));
   new MutationObserver(refresh).observe(document.documentElement,{childList:true,subtree:true});
   bindCampaignActions();
 })();

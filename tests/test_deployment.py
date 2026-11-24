@@ -33,8 +33,12 @@ class DeploymentTests(unittest.TestCase):
         updated = engine.op_mentor({"state": state, "mentor": "antall"})
         self.assertEqual(updated["mentor"], "antall")
 
-    def test_playability_assets_are_served(self):
+    def test_playability_assets_are_served_and_observer_loop_is_guarded(self):
         from app import app
+        from pathlib import Path
+        source = Path("static/playability.js").read_text(encoding="utf-8")
+        self.assertIn("card.dataset.rendered!==html", source)
+        self.assertIn("report.dataset.rendered!==html", source)
         with app.test_client() as client:
             self.assertEqual(client.get("/static/playability.js").status_code, 200)
             self.assertEqual(client.get("/static/playability.css").status_code, 200)
