@@ -3,22 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Magyar Politika</title>
+  <meta name="theme-color" content="#18395b">
+  <meta name="description" content="A classroom-friendly Hungarian political strategy game. Learn about elections, counties, parties, and policy trade-offs.">
+  <title>Magyar Politika — Hungarian Political Strategy</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header id="top" class="topbar"></header>
+  <header id="top" class="topbar" aria-label="Game controls"></header>
   <main>
-    <section class="layout">
+    <section class="layout" aria-label="Game board">
       <div class="window map-window">
-        <div class="titlebar">THE REPUBLIC — COUNTY MAP</div>
-        <canvas id="map" width="420" height="300" aria-label="Map of Hungarian counties"></canvas>
-        <div id="info" class="county-info">Select a county to inspect its profile.</div>
+        <div class="titlebar">HUNGARY · COUNTY MAP</div>
+        <canvas id="map" width="420" height="300" aria-label="Clickable map of Hungary and its 19 counties and Budapest" role="img" tabindex="0"></canvas>
+        <div id="info" class="county-info" aria-live="polite">Select a county to inspect its profile.</div>
         <div class="map-legend"><span></span> County winner · simplified game visualization</div>
       </div>
-      <section id="panel" class="window side-panel" aria-live="polite"></section>
+      <section id="panel" class="window side-panel" aria-live="polite" aria-label="Game information and actions"></section>
     </section>
-    <section id="log" class="window event-log" aria-live="polite"></section>
+    <section id="log" class="window event-log" aria-live="polite" aria-label="Campaign journal"></section>
   </main>
   <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Game dialog"></div>
   <script src="/static/game.js" defer></script>
