@@ -20,13 +20,28 @@ button:hover{color:#15213a;background:#f1ce7b;box-shadow:2px 2px 0 #080f20;trans
 .modal{background:#080f20d9;backdrop-filter:none}.dialog{border-top:5px solid var(--gold)}
 .dialog h2{color:#ffdf83;background:#142442;border-bottom:2px solid #60789e;text-shadow:2px 2px #080f20}
 .result-banner{color:#ffdf83;background:#142442;border:2px solid #6b83a8;border-radius:2px}
-#tutorial-layer{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:18px;background:#050b19dc}
-.tutorial-card{width:min(620px,96vw);padding:22px;background:#203253;color:#f7efd9;border:4px solid;border-color:#a1b5d5 #080f20 #080f20 #a1b5d5;box-shadow:7px 7px 0 #060b16}
-.tutorial-card h2{margin:-22px -22px 18px;padding:14px 20px;background:#142442;color:#ffdf83;border-bottom:3px solid #d5a74e}
-.tutorial-card p,.tutorial-card li{line-height:1.65}.tutorial-actions{display:flex;justify-content:space-between;gap:8px;margin-top:18px}
+#tutorial-layer{position:fixed;inset:0;z-index:40;pointer-events:none}
+.tutorial-card{position:fixed;width:min(410px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;padding:18px;background:#203253;color:#f7efd9;border:3px solid;border-color:#f1ce7b #080f20 #080f20 #f1ce7b;box-shadow:7px 7px 0 #060b16;pointer-events:auto}
+.tutorial-progress{margin:-18px -18px 12px;padding:8px 14px;background:#142442;color:#ffdf83;font-size:11px;font-weight:800;letter-spacing:.13em}
+.tutorial-card h2{margin:0 0 10px;color:#ffdf83;font-size:19px;line-height:1.25}
+.tutorial-card p{margin:9px 0;line-height:1.5}.tutorial-tip{padding:9px 11px;background:#142442;border-left:3px solid #e4b85c}.tutorial-tip b{margin-right:5px;color:#ffdf83}.tutorial-hint{color:#c3cee0;font-size:12px}
+.tutorial-actions{display:flex;justify-content:space-between;gap:8px;margin-top:14px}.tutorial-actions button{padding:7px 10px;font-size:12px}.tutorial-actions #tutorial-next{color:#17213a;background:#f1ce7b}
+.tutorial-highlight{position:relative!important;z-index:39!important;outline:4px solid #ffd45e!important;outline-offset:3px!important;box-shadow:0 0 0 7px #ffd45e55,0 0 25px 8px #ffd45e99!important;animation:tutorial-pulse 1.4s ease-in-out infinite alternate}
+@keyframes tutorial-pulse{from{outline-offset:2px;filter:brightness(1)}to{outline-offset:6px;filter:brightness(1.18)}}
 .politician-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0;padding:10px;background:#172744;border:2px solid #586f94}
 .politician-option{display:grid;justify-items:center;gap:5px;min-width:0;padding:7px;text-align:center;font-size:12px}
 .politician-option img{width:72px;height:84px;object-fit:cover;image-rendering:pixelated;border:2px solid #95a9c7;background:#152341}
 .politician-option.selected{background:#596342;outline:2px solid #f1ce7b}
 .portrait-note{grid-column:1/-1;margin:0;color:#c5d0e3;font-size:11px}
-@media(max-width:500px){.politician-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.tutorial-card{padding:16px}.tutorial-card h2{margin:-16px -16px 14px}}
+/* Keep the dashboard usable on narrow laptops, tablets and phones. */
+main{width:min(100%,1500px);padding:clamp(10px,2vw,24px)}
+.layout{grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);gap:clamp(10px,1.5vw,20px)}
+.window{padding:clamp(11px,1.5vw,20px)}
+#map{max-height:min(68vh,680px)}
+.side-panel{max-height:min(76vh,850px);overscroll-behavior:contain}
+.topbar{gap:6px;padding:9px clamp(8px,2vw,24px)}
+.topbar button,.readout{max-width:100%;overflow-wrap:anywhere}
+.tabs{min-width:0}
+@media(max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)}.side-panel{max-height:none}.map-window{min-width:0}}
+@media(max-width:620px){.topbar{position:static;padding:8px}.tabs{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.tabs button{width:100%;padding:7px 4px;font-size:12px}.readout{font-size:11px;padding:5px 7px}main{padding:10px}.window{padding:11px}.side-panel{max-height:none}#map{max-height:none}.politician-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.tutorial-card{max-height:calc(100dvh - 20px);padding:15px}.tutorial-progress{margin:-15px -15px 11px}.tutorial-actions{flex-wrap:wrap}.tutorial-actions button{flex:1}}
+@media(prefers-reduced-motion:reduce){.tutorial-highlight{animation:none}}

@@ -1,8 +1,9 @@
-/* Optional guided tutorial and original 16-bit-style politician sprites. */
+/* Interactive, in-context walkthrough plus original 16-bit-style politician sprites. */
 (() => {
   'use strict';
   const $ = (selector, root = document) => root.querySelector(selector);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const SAVE_KEY = 'magyar-politika-save';
   const roster = [
     {party:'MDF',name:'Antall József',title:'MDF · founding-era leader',colors:['#d4a875','#49352c','#e5c4a0','#314c50']},
     {party:'SZDSZ',name:'Kis János',title:'SZDSZ · founding leader',colors:['#c9b193','#554b43','#e4cbb0','#35465b']},
@@ -18,91 +19,97 @@
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   };
 
+  const steps = [
+    {id:'start', title:'Start a campaign', body:'First, create a campaign. Click the highlighted <b>Start in 1991</b> button in the game setup window.', tip:'Choose any party and difficulty you like; your choice will not affect the tutorial.', target:'#start-game', selector:'#start-game', complete:()=>Boolean(readSave())},
+    {id:'map', title:'Pick a county', body:'Click a highlighted county on the map. The information card below the map will show its profile.', tip:'Click any county shape—Budapest is the first shape near the middle.', target:'#map', selector:'#map', complete:()=>!$('#info')?.textContent.includes('Select a county to inspect')},
+    {id:'campaign-tab', title:'Open Campaign', body:'Now click the highlighted <b>Campaign</b> tab. The panel will change to your campaign office.', tip:'The tab is in the top navigation bar.', target:'[data-tab="Campaign"]', selector:'[data-tab="Campaign"]', complete:()=>$('.tabs [data-tab="Campaign"]')?.classList.contains('active')},
+    {id:'campaign-action', title:'Run a campaign action', body:'Click one of the highlighted campaign actions, such as posters, a rally, or polling. Watch the funds and campaign journal update.', tip:'If the action cannot run because funds are low, the game will explain why; you can still continue.', target:'#panel [data-campaign]', selector:'#panel [data-campaign]', complete:()=>{const state=readSave();return Boolean(state?.flash && state.flash!==stepBaseline);}},
+    {id:'learning-tab', title:'Explore the learning tabs', body:'Click <b>Policy</b> or <b>Advisors</b> to see how policies and mentor choices work.', tip:'Some policy actions are available only when your party leads government.', target:'[data-tab="Policy"], [data-tab="Advisors"]', selector:'[data-tab="Policy"], [data-tab="Advisors"]', complete:()=>['Policy','Advisors'].some(name=>$(`.tabs [data-tab="${name}"]`)?.classList.contains('active'))},
+    {id:'save-tab', title:'Save your campaign', body:'Click the <b>Game</b> tab, then press <b>Copy save code</b>. This gives you a portable backup of your campaign.', tip:'Progress is also saved automatically in this browser.', target:'[data-tab="Game"]', selector:'[data-tab="Game"]', complete:()=>$('.tabs [data-tab="Game"]')?.classList.contains('active')},
+    {id:'save-code', title:'That’s it—you’re ready!', body:'Your save code is ready in the text box. Keep it somewhere safe if you want to move the campaign to another browser.', tip:'You can reopen this guide any time from the Tutorial button.', target:'#copy-save', selector:'#copy-save', complete:()=>Boolean($('#save-box')?.value)}
+  ];
   let step = 0;
   let layer = null;
-  let completed = false;
-  let observeTimer = null;
+  let activeTarget = null;
+  let stepBaseline = null;
+  let pollTimer = null;
+  let resizeFrame = 0;
 
-  const steps = [
-    {title:'Welcome, campaign manager!',body:'Choose the <b>Party</b> tab and select a party. This is a clickable step—try it now.',tip:'The highlighted control is the next thing to use.',target:'[data-tab="Party"]',action:'click',advance:()=>$('.dialog [data-party]')?.closest('.dialog') || false},
-    {title:'Choose a county',body:'Click a county on the map to inspect its seats and local candidate.',tip:'Budapest is a good place to start.',target:'#map',action:'click',advance:()=>localStorage.getItem('magyar-politika-save')!==null},
-    {title:'Open Campaign',body:'Select the <b>Campaign</b> tab. Campaign actions cost money and improve support.',tip:'The Campaign tab stays open after nationwide actions.',target:'[data-tab="Campaign"]',action:'click',advance:()=>$('.tabs [data-tab="Campaign"]')?.classList.contains('active')},
-    {title:'Try a campaign action',body:'Choose either a local campaign button or enable <b>Nationwide campaign</b>.',tip:'You do not need to spend money to continue if funds are low.',target:'#panel [data-campaign], #campaign-target-scope',action:'click',advance:()=>true},
-    {title:'Read Policy and Advisors',body:'Open <b>Policy</b> or <b>Advisors</b> to see trade-offs and historical advice.',tip:'Policies require government status.',target:'[data-tab="Policy"], [data-tab="Advisors"]',action:'click',advance:()=>true},
-    {title:'Save your campaign',body:'Open <b>Game</b>, then use <b>Copy save code</b>. You can also load a save code later.',tip:'Your campaign is also stored in this browser.',target:'[data-tab="Game"]',action:'click',advance:()=>true}
-  ];
-
-  function removeHighlights() {
-    document.querySelectorAll('.tutorial-highlight').forEach(el=>el.classList.remove('tutorial-highlight'));
+  function readSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (_) { return null; } }
+  function visibleTarget(selector) { return [...document.querySelectorAll(selector)].find(el=>el.getClientRects().length); }
+  function clearTarget() { activeTarget?.classList.remove('tutorial-highlight'); activeTarget=null; }
+  function positionCard() {
+    if (!layer) return;
+    const card=$('.tutorial-card',layer);
+    if (!card) return;
+    const margin=14, gap=16, rect=activeTarget?.getBoundingClientRect();
+    const width=Math.min(410,window.innerWidth-margin*2);
+    card.style.width=`${width}px`;
+    const height=card.offsetHeight;
+    let left=Math.max(margin,(window.innerWidth-width)/2), top=margin;
+    if (rect) {
+      const below=window.innerHeight-rect.bottom-gap-margin;
+      const above=rect.top-gap-margin;
+      if (below>=Math.min(height,190)) top=rect.bottom+gap;
+      else if (above>=Math.min(height,190)) top=rect.top-height-gap;
+      else top=Math.max(margin,Math.min(window.innerHeight-height-margin,(window.innerHeight-height)/2));
+      if (window.innerWidth>760) {
+        const right=window.innerWidth-rect.right-gap-width;
+        const leftSpace=rect.left-gap-width;
+        if (right>=margin) left=rect.right+gap;
+        else if (leftSpace>=margin) left=leftSpace;
+      }
+    }
+    top=Math.max(margin,Math.min(top,window.innerHeight-height-margin));
+    left=Math.max(margin,Math.min(left,window.innerWidth-width-margin));
+    card.style.left=`${left}px`; card.style.top=`${top}px`;
   }
-  function highlightTarget() {
-    removeHighlights();
-    const item = steps[step];
-    if (!item?.target) return;
-    const candidates = [...document.querySelectorAll(item.target)].filter(el=>el.offsetParent!==null);
-    candidates.forEach(el=>el.classList.add('tutorial-highlight'));
-  }
-  function showTutorial() {
-    step = 0;
-    completed = false;
-    drawTutorial();
+  function attachTarget() {
+    clearTarget();
+    const current=steps[step];
+    activeTarget=visibleTarget(current.target);
+    if (activeTarget) {
+      activeTarget.classList.add('tutorial-highlight');
+      activeTarget.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+    }
+    requestAnimationFrame(positionCard);
   }
   function closeTutorial() {
-    removeHighlights();
-    if (layer) layer.remove();
-    layer = null;
+    clearInterval(pollTimer); pollTimer=null; clearTarget();
+    if(layer) layer.remove();
+    layer=null;
+  }
+  function finishStep() {
+    if (!layer) return;
+    if (step < steps.length-1) { step++; drawTutorial(); }
+    else { localStorage.setItem('magyar-politika-tutorial-complete','true'); closeTutorial(); }
   }
   function drawTutorial() {
     if (!layer) {
-      layer = document.createElement('div');
-      layer.id = 'tutorial-layer';
-      layer.setAttribute('role','dialog');
-      layer.setAttribute('aria-modal','true');
-      layer.setAttribute('aria-label','Interactive game tutorial');
+      layer=document.createElement('div'); layer.id='tutorial-layer';
+      layer.setAttribute('role','region'); layer.setAttribute('aria-label','Interactive game tutorial');
       document.body.appendChild(layer);
     }
-    const item = steps[step];
-    layer.innerHTML = `<section class="tutorial-card"><div class="tutorial-progress">Interactive guide · Step ${step+1} of ${steps.length}</div><h2>${esc(item.title)}</h2><p>${item.body}</p><p><b>Tip:</b> ${esc(item.tip)}</p><div class="tutorial-actions"><button type="button" id="tutorial-back" ${step===0?'disabled':''}>Back</button><button type="button" id="tutorial-skip">Close guide</button><button type="button" id="tutorial-next">${step===steps.length-1?'Finish':'Next'}</button></div></section>`;
-    $('#tutorial-skip',layer).onclick=closeTutorial;
+    stepBaseline=readSave()?.flash ?? null;
+    const item=steps[step];
+    layer.innerHTML=`<section class="tutorial-card" role="dialog" aria-modal="false" aria-labelledby="tutorial-title"><div class="tutorial-progress">STEP ${step+1} OF ${steps.length}</div><h2 id="tutorial-title">${esc(item.title)}</h2><p>${item.body}</p><p class="tutorial-tip"><b>TIP</b> ${esc(item.tip)}</p><p class="tutorial-hint">Click the glowing control to complete this step.</p><div class="tutorial-actions"><button type="button" id="tutorial-back" ${step===0?'disabled':''}>Back</button><button type="button" id="tutorial-close">Exit</button><button type="button" id="tutorial-next">Skip step →</button></div></section>`;
+    $('#tutorial-close',layer).onclick=closeTutorial;
     $('#tutorial-back',layer).onclick=()=>{if(step>0){step--;drawTutorial();}};
-    $('#tutorial-next',layer).onclick=()=>advanceManual();
-    $('#tutorial-next',layer).focus();
-    highlightTarget();
+    $('#tutorial-next',layer).onclick=finishStep;
+    attachTarget();
+    clearInterval(pollTimer);
+    pollTimer=setInterval(()=>{
+      if (layer && steps[step].complete()) finishStep();
+    },300);
   }
-  function advanceManual() {
-    if (step < steps.length-1) {
-      step++;
-      drawTutorial();
-    } else {
-      completed = true;
-      closeTutorial();
-      localStorage.setItem('magyar-politika-tutorial-complete','true');
-    }
+  function showTutorial() {
+    if (layer) closeTutorial();
+    // Skip campaign creation when a save already exists; continue at the map step.
+    step=readSave()?1:0;
+    drawTutorial();
   }
-  function checkInteractiveStep() {
-    if (!layer) return;
-    const item = steps[step];
-    if (!item?.advance) return;
-    try {
-      if (item.advance()) {
-        clearTimeout(observeTimer);
-        observeTimer=setTimeout(()=>{
-          if (layer && step===0 && $('.dialog [data-party].selected')) advanceManual();
-          else if (layer && step===1) advanceManual();
-          else if (layer && step===2 && $('.tabs [data-tab="Campaign"]')?.classList.contains('active')) advanceManual();
-          else if (layer && step===3) advanceManual();
-          else if (layer && step===4) advanceManual();
-          else if (layer && step===5) advanceManual();
-        },350);
-      }
-    } catch (_) {}
-  }
-
-  document.addEventListener('click',event=>{
-    if (!layer) return;
-    if (observeTimer) clearTimeout(observeTimer);
-    observeTimer=setTimeout(checkInteractiveStep,500);
-  },true);
+  window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(positionCard);});
+  window.addEventListener('scroll',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(positionCard);},true);
 
   function galleryMarkup(selected) {
     return `<section aria-label="Choose a historical party leader"><h3>Choose a leader</h3><div class="politician-gallery">${roster.map((person,index)=>`<button type="button" class="politician-option ${person.party===selected?'selected':''}" data-portrait-party="${person.party}" aria-pressed="${person.party===selected}"><img src="${sprite(person.colors,index)}" alt="Original 16-bit-style pixel-art avatar for ${esc(person.name)}; not a photograph"><b>${esc(person.name)}</b><span>${esc(person.title)}</span></button>`).join('')}<p class="portrait-note">Original retro pixel-art avatars, not archival photographs. Selecting a portrait also selects that party.</p></div></section>`;
@@ -111,35 +118,32 @@
     const dialog=$('.dialog');
     if(!dialog || !$('#leader-name',dialog) || $('#politician-gallery',dialog)) return;
     const leader=$('#leader-name',dialog);
-    const gallery=document.createElement('div');gallery.id='politician-gallery';gallery.innerHTML=galleryMarkup('MDF');
+    const gallery=document.createElement('div'); gallery.id='politician-gallery'; gallery.innerHTML=galleryMarkup('MDF');
     leader.closest('label')?.insertAdjacentElement('beforebegin',gallery);
     gallery.addEventListener('click',event=>{
       const button=event.target.closest('[data-portrait-party]'); if(!button)return;
-      const person=roster.find(item=>item.party===button.dataset.portraitParty);if(!person)return;
-      const partyButton=$(`[data-party="${person.party}"]`,dialog);partyButton?.click();
-      leader.value=person.name;
-      gallery.innerHTML=galleryMarkup(person.party);
-      if (layer) setTimeout(checkInteractiveStep,300);
+      const person=roster.find(item=>item.party===button.dataset.portraitParty); if(!person)return;
+      $(`[data-party="${person.party}"]`,dialog)?.click();
+      leader.value=person.name; gallery.innerHTML=galleryMarkup(person.party);
     });
     dialog.addEventListener('click',event=>{
-      const partyButton=event.target.closest('[data-party]');if(!partyButton)return;
-      const person=roster.find(item=>item.party===partyButton.dataset.party);
-      if(person){leader.value=person.name;gallery.innerHTML=galleryMarkup(person.party)}
+      const button=event.target.closest('[data-party]'); if(!button)return;
+      const person=roster.find(item=>item.party===button.dataset.party);
+      if(person){leader.value=person.name;gallery.innerHTML=galleryMarkup(person.party);}
     });
   }
   function addTutorialButton() {
-    const top = $('#top');
-    if (top && !$('#tutorial-open',top)) {
-      const button = document.createElement('button'); button.id='tutorial-open'; button.type='button'; button.textContent='Tutorial'; button.title='Open the interactive game tutorial'; button.onclick=showTutorial; top.appendChild(button);
+    const top=$('#top');
+    if(top && !$('#tutorial-open',top)) {
+      const button=document.createElement('button'); button.id='tutorial-open'; button.type='button'; button.textContent='Tutorial'; button.title='Open the interactive game walkthrough'; button.onclick=showTutorial; top.appendChild(button);
     }
-    const dialog = $('.dialog');
+    const dialog=$('.dialog');
     if(dialog && !$('#tutorial-start',dialog)) {
-      const button=document.createElement('button');button.id='tutorial-start';button.type='button';button.textContent='How to play';button.onclick=showTutorial;
+      const button=document.createElement('button'); button.id='tutorial-start'; button.type='button'; button.textContent='How to play'; button.onclick=showTutorial;
       const heading=$('h2',dialog); if(heading) heading.insertAdjacentElement('afterend',button);
     }
   }
-
-  const observer = new MutationObserver(()=>{addTutorialButton();installGallery();highlightTarget();});
+  const observer=new MutationObserver(()=>{addTutorialButton();installGallery();if(layer){const target=visibleTarget(steps[step].target);if(target!==activeTarget)attachTarget();else requestAnimationFrame(positionCard);}});
   observer.observe(document.documentElement,{childList:true,subtree:true});
-  addTutorialButton();installGallery();
+  addTutorialButton(); installGallery();
 })();
