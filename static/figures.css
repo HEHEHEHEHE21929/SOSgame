@@ -1,0 +1,11 @@
+/* Pixelated, source-credited public-figure photographs. */
+.portrait-card{display:flex;align-items:center;gap:10px;margin:9px 0;padding:8px;background:#172744;border:2px solid #536a8d;color:#f5ecd5}
+.portrait-frame{position:relative;display:grid;place-items:center;flex:0 0 64px;width:64px;height:76px;overflow:hidden;background:#293f62;border:2px solid #d6bd7a}
+.portrait-frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:saturate(.75) contrast(1.12)}
+.portrait-placeholder{font-family:monospace;font-size:20px;font-weight:900;color:#f2d47e;text-shadow:2px 2px #172744}
+.portrait-caption{display:grid;gap:3px;min-width:0;font-size:12px}.portrait-credit{color:#c4cfe0;font-size:10px;overflow-wrap:anywhere}
+.portrait-credit a,.portrait-source{color:#f3d37e}.portrait-source{display:block;max-width:180px;margin:3px auto 0;font-size:9px;overflow-wrap:anywhere}
+.roster-note{padding:7px 9px;background:#172744;color:#d0d9e7;border-left:3px solid #d7a84c;font-size:11px}
+.candidate-preview{max-width:100%}.candidate-preview .portrait-frame{width:50px;height:60px;flex-basis:50px}
+.politician-option .portrait-source{color:#ffdc81}
+#mp-form select[name="historic-mp"]{min-width:0;flex:1}
