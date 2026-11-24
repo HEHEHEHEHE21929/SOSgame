@@ -1,0 +1,26 @@
+/* Friendly interface refinements and gentle synthesized UI sounds. */
+:root { --ink:#192b43; --navy:#1d4665; --paper:#f4f7fb; --panel:#fff; --gold:#efb94f; --line:#d6e0e9; }
+body { background:linear-gradient(145deg,#eef5fa,#f7f4ed 55%,#eef5fa); }
+.topbar { gap:10px; padding-top:14px; padding-bottom:14px; }
+.topbar .readout { font-size:14px; }
+main { padding-top:26px; }
+.window { border-radius:16px; }
+.side-panel { max-height:82vh; }
+button { min-height:40px; }
+button:disabled { opacity:.55; cursor:not-allowed; }
+.extra-actions { margin-top:16px; padding:16px; background:#f3f7fb; border:1px solid #d6e2eb; border-radius:12px; }
+.extra-actions h3 { margin:0 0 6px; color:#1d4665; }
+.extra-actions p { color:#526175; }
+.extra-actions .action-card { margin:10px 0; padding:12px; background:#fff; border:1px solid #dce5ec; border-radius:10px; }
+.extra-actions .action-card button { margin:6px 6px 0 0; }
+.ethics-warning { padding:10px 12px; color:#633f12; background:#fff3d8; border-left:4px solid #e8a82c; border-radius:7px; }
+#easy-guide { margin-left:auto; }
+.guide-backdrop { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:18px; background:#0c1a2bd1; }
+.guide-card { width:min(560px,96vw); padding:24px; background:#fff; border-radius:18px; box-shadow:0 20px 70px #0005; }
+.guide-card h2 { margin-top:0; color:#1d4665; }
+.guide-progress { color:#66768a; font-size:13px; }
+.guide-actions { display:flex; justify-content:space-between; gap:10px; margin-top:20px; }
+.guide-actions button:last-child { color:#fff; background:#1d4665; }
+.sound-toggle[aria-pressed="true"] { color:#163c2a!important; background:#bfe7ce!important; }
+.emergency-note { padding:10px 12px; margin:10px 0; background:#fff2df; border-left:4px solid #de8834; border-radius:7px; }
+@media(max-width:620px){ main{padding:12px} .extra-actions{padding:12px} #easy-guide{margin-left:0} }

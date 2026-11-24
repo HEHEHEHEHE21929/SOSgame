@@ -1,5 +1,5 @@
 import unittest
-from game import engine
+from game import engine, expansion
 
 
 class DeploymentTests(unittest.TestCase):
@@ -43,6 +43,38 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(client.get("/static/playability.js").status_code, 200)
             self.assertEqual(client.get("/static/playability.css").status_code, 200)
             self.assertIn(b"playability.js", client.get("/").data)
+
+    def test_corrupt_choices_cost_public_money_and_reduce_trust(self):
+        state = engine.op_new({"party": "MDF"})
+        state.update(inpower=True, money=50)
+        updated = expansion.op_corrupt({"state": state, "action": "holiday"})
+        self.assertEqual(updated["money"], 38)
+        self.assertLess(updated["trust"], 100)
+        self.assertEqual(updated["corruption"], 1)
+
+    def test_corrupt_choices_are_unavailable_outside_government(self):
+        state = engine.op_new({"party": "MDF"})
+        updated = expansion.op_corrupt({"state": state, "action": "holiday"})
+        self.assertEqual(updated["money"], state["money"])
+        self.assertIn("only while", updated["flash"])
+
+    def test_fictional_emergency_schedule_and_humanitarian_choice(self):
+        state = engine.op_new({"party": "MDF"})
+        state["m"] = (2029 - 1991) * 12 + 5
+        event_state = expansion.after_tick(state)
+        self.assertEqual(event_state["event"]["id"], "scenario-nuclear")
+        updated = expansion.op_emergency_choice({"state": event_state, "i": 0})
+        self.assertIsNone(updated["event"])
+        self.assertIn("fictional classroom scenario", updated["flash"])
+
+    def test_expansion_endpoints_are_served(self):
+        from app import app
+        state = engine.op_new({"party": "MDF"})
+        with app.test_client() as client:
+            response = client.post("/api/expansion/corrupt", json={"state": {**state, "inpower": True, "money": 50}, "action": "holiday"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["corruption"], 1)
+            self.assertEqual(client.get("/static/enhancements.js").status_code, 200)
 
 
 if __name__ == "__main__":
