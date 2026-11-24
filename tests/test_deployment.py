@@ -16,21 +16,29 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.get_json()["party"], "MDF")
 
+    def test_candidate_recruitment_adds_named_person_to_selected_county(self):
+        state = engine.op_new({"party": "MDF"})
+        state["money"] = 20
+        updated = engine.op_appoint({"state": state, "county": 0, "name": "Antall József"})
+        self.assertEqual(updated["county_mps"]["0"], "Antall József")
+        self.assertEqual(updated["money"], 18)
+
     def test_candidate_validation(self):
         state = engine.op_new({"party": "MDF"})
         with self.assertRaises(ValueError):
             engine.op_appoint({"state": state, "county": 0, "name": "Made-up name"})
 
-    def test_parliament_assets_are_served(self):
+    def test_advisor_selection_returns_a_persistable_state(self):
+        state = engine.op_new({"party": "MDF"})
+        updated = engine.op_mentor({"state": state, "mentor": "antall"})
+        self.assertEqual(updated["mentor"], "antall")
+
+    def test_playability_assets_are_served(self):
         from app import app
         with app.test_client() as client:
-            js = client.get("/static/parliament.js")
-            css = client.get("/static/parliament.css")
-            page = client.get("/")
-            self.assertEqual(js.status_code, 200)
-            self.assertEqual(css.status_code, 200)
-            self.assertIn(b"parliament.js", page.data)
-            self.assertIn(b"parliament.css", page.data)
+            self.assertEqual(client.get("/static/playability.js").status_code, 200)
+            self.assertEqual(client.get("/static/playability.css").status_code, 200)
+            self.assertIn(b"playability.js", client.get("/").data)
 
 
 if __name__ == "__main__":
