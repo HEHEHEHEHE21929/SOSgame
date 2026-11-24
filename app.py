@@ -1,8 +1,8 @@
-"""Flask entry point for the stateless, browser-saved game."""
+"""MAGYAR POLITIKA - main entry and stateless API."""
 from flask import Flask, jsonify, render_template, request
 from game import engine
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
 @app.get("/")
@@ -17,7 +17,7 @@ def meta():
 
 @app.post("/api/<op>")
 def api(op):
-    """Only expose the engine's explicitly named game operations."""
+    """Run only explicitly supported game operations."""
     fn = getattr(engine, "op_" + op, None)
     if fn is None:
         return jsonify(error="Unknown game action."), 404

@@ -1,1 +1,1 @@
-"""Game package."""
+"""Game engine compatibility helpers and difficulty support."""
