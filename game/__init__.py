@@ -1,1 +1,1 @@
-"""Game engine compatibility helpers and difficulty support."""
+"""Stateless simulation for Magyar Politika."""
