@@ -1,16 +1,21 @@
-/* County atlas and optional challenge-board styling. */
-.map-window{position:relative;overflow:hidden;background:linear-gradient(145deg,#172e4a,#203e5d)}
-.map-window .titlebar{color:#ffe49b}
-#map{height:auto;max-height:none;aspect-ratio:7/5;touch-action:manipulation;cursor:crosshair}
-.map-legend{color:#c4d2df}
-.mission-board{margin-top:16px;padding:13px;background:linear-gradient(135deg,#182744,#253b5d);border:2px solid #6f86a8;box-shadow:3px 3px 0 #0b1428}
-.mission-board h3{margin:0 0 5px!important;padding-bottom:7px!important;color:#ffe08b!important;border-bottom:1px solid #60789a!important;font-size:15px!important}
-.mission-intro{margin:5px 0 10px!important;color:#c7d2e1;font-size:11px}
-.mission-card{margin:8px 0;padding:9px;background:#10203a;border:1px solid #50688a}
-.mission-card.complete{border-color:#78c39c;background:#183c3b}
-.mission-heading{display:flex;justify-content:space-between;gap:8px;color:#f7ecd4;font-size:12px}
-.mission-heading span{color:#ffdc81;font-size:10px;white-space:nowrap}
-.mission-card p{margin:4px 0 7px!important;color:#bdc9dc;font-size:11px}
-.mission-track{height:7px;overflow:hidden;background:#080f20;border:1px solid #7084a2}
-.mission-track i{display:block;height:100%;background:linear-gradient(90deg,#49a879,#f0cf75);transition:width .25s ease}
-@media(max-width:620px){.mission-board{margin-top:12px;padding:10px}}
+/* Fit the game to a desktop viewport; keep long panels internally scrollable. */
+:root{--topbar-height:76px}
+html,body{width:100%;height:100%;min-height:0}
+body{overflow:hidden}
+.topbar{min-height:56px;max-height:88px;padding-top:7px;padding-bottom:7px;overflow:visible}
+main{width:100%;height:calc(100dvh - var(--topbar-height));max-width:1600px;margin:0 auto;padding:10px 14px;overflow:hidden}
+.layout{height:100%;min-height:0;grid-template-columns:minmax(0,1.22fr) minmax(340px,.9fr);gap:12px;align-items:stretch}
+.map-window,.side-panel{height:100%;min-height:0;min-width:0}
+.map-window{display:grid;grid-template-rows:auto minmax(130px,1fr) auto auto;overflow:hidden}
+#map{width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;object-fit:contain}
+.county-info{min-height:48px;margin-top:8px;padding:8px 10px;font-size:13px}
+.map-legend{margin-top:5px;font-size:10px}
+.side-panel{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.event-log{position:fixed;left:14px;bottom:8px;z-index:4;width:min(42vw,520px);max-height:58px;overflow:hidden;margin:0;padding:7px 10px;opacity:.94;font-size:11px}
+.mission-board{margin-top:10px;padding:9px}
+.mission-card{margin:5px 0;padding:6px}
+.mission-card p{margin:2px 0 4px!important}
+@media(max-height:700px) and (min-width:761px){:root{--topbar-height:64px}.topbar{min-height:48px;max-height:66px;gap:5px}.readout{padding:4px 7px}.topbar button{padding:5px 7px}main{padding:7px 10px}.window{padding:11px}.titlebar{margin-bottom:7px}.county-info{min-height:40px;padding:5px 8px}.mission-board{margin-top:6px;padding:7px}.mission-intro{display:none}.mission-card p{font-size:10px}}
+@media(max-width:900px){html,body{height:auto;min-height:100%;overflow:auto}.topbar{position:sticky;top:0;max-height:none}.layout{height:auto;grid-template-columns:minmax(0,1fr)}.map-window{height:min(68vh,620px);min-height:400px}.side-panel{height:auto;max-height:62vh}.event-log{position:static;width:auto;max-height:100px;margin-top:10px}}
+@media(max-width:620px){main{height:auto;overflow:visible;padding:8px}.map-window{height:420px;min-height:360px}.side-panel{max-height:none}.event-log{margin-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.mission-track i{transition:none}}
