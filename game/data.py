@@ -41,6 +41,13 @@ LEADERS = {
     "CUSTOM": ["Party founder"],
 }
 
+# Public figures available for fictional local-candidate appointments in-game.
+MP_CANDIDATES = [
+    "Antall József", "Horn Gyula", "József Torgyán", "László Kövér",
+    "Viktor Orbán", "Gergely Gulyás", "Katalin Novák", "László Surján",
+    "Péter Magyar",
+]
+
 COUNTIES = [
     ("Budapest","U",16),("Pest","U",12),("Győr-Moson-Sopron","M",6),("Komárom-Esztergom","M",4),
     ("Fejér","M",5),("Veszprém","M",5),("Vas","R",3),("Zala","R",3),("Somogy","R",4),("Tolna","R",3),
@@ -86,7 +93,7 @@ EVENTS = [
 ]
 
 MENTORS = {
-    "magyar": {"n":"Magyar Péter","bonus":{"anti":.6,"vol":.4},"facts":["Resigned from Fidesz in 2024","Founded Tisza in 2024","Led Tisza to a two-thirds majority in April 2026","Became prime minister in May 2026"],"learn":"Supporters admire his anti-corruption message and challenge to a long-ruling government. Critics note his years as a Fidesz insider and question how different his government will be."},
+    "magyar": {"n":"Magyar Péter","bonus":{"anti":.6,"vol":.4},"facts":["Resigned from Fidesz in 2024","Founded Tisza in 2024","Tisza was established in 2020; Magyar became its leader in 2024"],"learn":"Supporters admire his anti-corruption message and challenge to a long-ruling government. Critics note his years as a Fidesz insider and question how different his government will be."},
     "antall": {"n":"Antall József","bonus":{"cap":.2},"facts":["First prime minister after the 1990 free elections","Led the MDF"],"learn":"Supporters admire his leadership through the post-communist transition. Critics point to economic difficulties and the pace of reform during the period."},
     "horn": {"n":"Horn Gyula","bonus":{"tv":.3},"facts":["Prime minister from 1994 to 1998","Led the MSZP"],"learn":"Supporters credit him with economic stabilization and Hungary's path toward NATO and EU membership. Critics point to the unpopular austerity package of 1995."},
     "orban": {"n":"Orbán Viktor","bonus":{"vol":.2,"tv":.2},"facts":["Prime minister during 1998–2002 and 2010–2026","Leader of Fidesz"],"learn":"Supporters value his emphasis on national sovereignty and family policy. Critics argue that his governments weakened checks and balances and tolerated corruption."},

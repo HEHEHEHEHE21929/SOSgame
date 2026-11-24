@@ -1,14 +1,21 @@
-"""Stateless, classroom-friendly rules for Magyar Politika."""
+"""Stateless classroom-friendly simulation rules for Magyar Politika."""
 import random
 from copy import deepcopy
 
-from .data import CAMPAIGN, COUNTIES, DIFFICULTIES, EVENTS, LEADERS, MENTORS, PARTIES, POLICIES, MP_CANDIDATES
+from .data import CAMPAIGN, COUNTIES, DIFFICULTIES, EVENTS, LEADERS, MENTORS, PARTIES, POLICIES
 
-END = 479  # December 2030, with January 1991 as month zero.
-ELECTIONS = {39 + 36 * index for index in range(13)}  # First: April 1994.
+# Public figures used as selectable local candidates. Their county assignments in-game are fictional.
+MP_CANDIDATES = [
+    "Antall József", "Horn Gyula", "József Torgyán", "László Kövér",
+    "Viktor Orbán", "Gergely Gulyás", "Katalin Novák", "László Surján",
+    "Péter Magyar",
+]
+END = 479
 TOTAL_SEATS = 199
-LIST_SEATS = TOTAL_SEATS - sum(county[2] for county in COUNTIES)
+COUNTY_SEATS = sum(county[2] for county in COUNTIES)
+LIST_SEATS = TOTAL_SEATS - COUNTY_SEATS
 MAJORITY = TOTAL_SEATS // 2 + 1
+ELECTIONS = {39 + 36 * index for index in range(13)}
 
 
 def year(month):
@@ -21,7 +28,6 @@ def lean(party, county_type):
 
 
 def baseline(party, month):
-    """Interpolate the deliberately simplified support trend for a party."""
     frames = PARTIES[party]["support"]
     current_year = 1991 + month / 12
     if current_year <= frames[0][0]:
@@ -54,7 +60,7 @@ def meta():
         "campaign": CAMPAIGN, "policies": POLICIES, "mentors": MENTORS,
         "leaders": LEADERS, "counties": COUNTIES, "difficulties": DIFFICULTIES,
         "mp_candidates": MP_CANDIDATES,
-        "election": {"total_seats": TOTAL_SEATS, "county_seats": sum(c[2] for c in COUNTIES),
+        "election": {"total_seats": TOTAL_SEATS, "county_seats": COUNTY_SEATS,
                      "list_seats": LIST_SEATS, "majority": MAJORITY, "threshold": 5},
     }
 
@@ -89,11 +95,11 @@ def op_new(data):
 
 
 def largest_remainder(values, total):
-    """Allocate integer list seats proportionally using largest remainders."""
+    """Allocate integer seats proportionally using the largest-remainder method."""
     if total < 0:
         raise ValueError("Seat total cannot be negative.")
     if not values or total == 0:
-        return {key: 0 for key in values}
+        return dict.fromkeys(values, 0)
     denominator = sum(values.values())
     if denominator <= 0:
         return dict.fromkeys(values, 0)
@@ -114,7 +120,6 @@ def run_election(state):
         shares[player] *= .6
         total = sum(shares.values()) or 1
         shares = {party: value * 100 / total for party, value in shares.items()}
-
     eligible = {party: share for party, share in shares.items() if share >= 5}
     excluded = {party: round(share, 1) for party, share in shares.items() if share < 5}
     if not eligible:
@@ -143,7 +148,6 @@ def run_election(state):
     list_allocations = largest_remainder(eligible, LIST_SEATS)
     for party, count in list_allocations.items():
         seats[party] += count
-    # Parties below the threshold do not get list seats, but may still win a constituency.
     ranked = sorted(seats, key=lambda key: (seats[key], key == player), reverse=True)
     government = ranked[0]
     coalition = ranked[1] if seats[government] < MAJORITY and len(ranked) > 1 else None
@@ -161,10 +165,10 @@ def run_election(state):
         "excluded_from_list": excluded, "gov": government, "coalition": coalition,
         "maj": MAJORITY, "total_seats": TOTAL_SEATS,
         "supermaj": seats[government] * 3 >= TOTAL_SEATS * 2,
-        "lesson": f"The simulation allocates {sum(c[2] for c in COUNTIES)} county seats plus {LIST_SEATS} proportional list seats. Parties below 5% do not receive list seats.",
+        "lesson": f"The simulation allocates {COUNTY_SEATS} county seats plus {LIST_SEATS} proportional list seats. Parties below 5% do not receive list seats.",
     }
-    state["hist"].append({"year": year(state["m"]), "seats": state["seats"], "gov": government, "share": round(share, 1)})
-    state["log"].append(f"{year(state['m'])} simulated election: {state['seats']} of {TOTAL_SEATS} seats; list seats use proportional allocation with a 5% threshold.")
+    state.setdefault("hist", []).append({"year": year(state["m"]), "seats": state["seats"], "gov": government, "share": round(share, 1)})
+    state.setdefault("log", []).append(f"{year(state['m'])} simulated election: {state['seats']} of {TOTAL_SEATS} seats; list seats use proportional allocation with a 5% threshold.")
     state["reg"] = False
     state["spent"] = {}
     state["county_support"] = {}
@@ -177,7 +181,7 @@ def run_election(state):
 
 def finish(state):
     state["over"] = state.get("over") or "end"
-    state["score"] = sum(item["seats"] for item in state["hist"]) + round(state["years_power"] * 8) + max(0, round(state["money"] / 10))
+    state["score"] = sum(item["seats"] for item in state.get("hist", [])) + round(state.get("years_power", 0) * 8) + max(0, round(state.get("money", 0) / 10))
 
 
 def op_tick(data):
@@ -190,7 +194,7 @@ def op_tick(data):
     current_year = year(state["m"])
     month_number = state["m"] % 12 + 1
     mentor = MENTORS.get(state.get("mentor"), MENTORS["magyar"])["bonus"]
-    state["money"] += 1.5 + state.get("poll", {}).get(state["party"], 0) * .25 + state.get("seats", 0) * .05 - 2
+    state["money"] = state.get("money", 0) + 1.5 + state.get("poll", {}).get(state["party"], 0) * .25 + state.get("seats", 0) * .05 - 2
     state["cap"] = min(20, state.get("cap", 0) + (1 if state.get("inpower") else .3) + mentor.get("cap", 0))
     state["boost"] = state.get("boost", 0) * (.965 if state.get("inpower") else .975)
     state.setdefault("mood", {"U": 0.0, "R": 0.0, "M": 0.0})
@@ -207,10 +211,10 @@ def op_tick(data):
 
     if month_number == 1:
         for party, details in PARTIES.items():
-            if details["founded"] == current_year and current_year > 1991 and party != "CUSTOM" and party not in state["founded_seen"]:
+            if details["founded"] == current_year and current_year > 1991 and party != "CUSTOM" and party not in state.setdefault("founded_seen", []):
                 state["founded_seen"].append(party)
                 state["event"] = {"id": "new-" + party, "title": "New party founded!", "text": f"{details['n']} enters the political landscape in this game year.", "choices": [["Continue", {}]]}
-                state["log"].append(f"{current_year}: {details['n']} founded in this simulation.")
+                state.setdefault("log", []).append(f"{current_year}: {details['n']} founded in this simulation.")
                 break
     if not state.get("event"):
         for item in EVENTS:
@@ -255,9 +259,8 @@ def op_campaign(data):
             raise ValueError("Choose a county on the map first.")
         key = str(index)
         support = state.setdefault("county_support", {})
-        before = support.get(key, 0)
         actual_gain = gain / (1 + state.setdefault("spent", {}).get(action, 0) / 60)
-        support[key] = before + actual_gain
+        support[key] = support.get(key, 0) + actual_gain
         state["spent"][action] = state["spent"].get(action, 0) + cost
         state["flash"] = f"{label} campaign held in {COUNTIES[index][0]}; local support increased by {actual_gain:.2f} (diminishing returns apply)."
     else:
@@ -287,8 +290,7 @@ def op_policy(data):
         state.setdefault("mood", {"U": 0, "R": 0, "M": 0})
         state["mood"]["U"] += policy["U"]
         state["mood"]["R"] += policy["R"]
-        history = state.setdefault("policy_history", [])
-        history.append({"id": policy["id"], "label": policy["label"], "year": year(state["m"]), "status": "enacted"})
+        state.setdefault("policy_history", []).append({"id": policy["id"], "label": policy["label"], "year": year(state["m"]), "status": "enacted"})
         state["flash"] = f"POLICY ENACTED: {policy['label']}. Helps {policy['win']}; trade-off {policy['lose']}."
         state.setdefault("log", []).append(state["flash"])
     return state
