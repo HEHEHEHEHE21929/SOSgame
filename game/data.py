@@ -1,95 +1,78 @@
-"""Simplified, classroom-friendly game data."""
-
-
-def policy(i, label, cap, cost, boost, urban, rural, helps, tradeoff):
-    return {"id": i, "label": label, "cap": cap, "cost": cost, "b": boost,
-            "U": urban, "R": rural, "win": helps, "lose": tradeoff}
-
-
-def event(i, y, month, title, text, *choices):
-    return {"id": i, "y": y, "mo": month, "title": title, "text": text,
-            "choices": [list(choice) for choice in choices]}
-
-
-PARTIES = {
-    "MDF": {"n": "MDF", "c": "#00aa00", "founded": 1988, "lean": (1, 1.1), "support": [(1991,25),(1994,12),(1998,3),(2002,0)]},
-    "SZDSZ": {"n": "SZDSZ", "c": "#ff55ff", "founded": 1988, "lean": (1.5,.6), "support": [(1991,20),(1994,19),(1998,8),(2006,6),(2010,0)]},
-    "MSZP": {"n": "MSZP", "c": "#ff5555", "founded": 1989, "lean": (1,1), "support": [(1991,12),(1994,33),(1998,32),(2002,42),(2010,19),(2018,12),(2022,10),(2026,2)]},
-    "FKGP": {"n": "FKGP", "c": "#aa5500", "founded": 1988, "lean": (.6,1.5), "support": [(1991,10),(1994,9),(1998,3),(2002,0)]},
-    "KDNP": {"n": "KDNP", "c": "#aa00aa", "founded": 1989, "lean": (.8,1.2), "support": [(1991,7),(1994,7),(1998,3),(2002,0)]},
-    "FIDESZ": {"n": "Fidesz", "c": "#ff9922", "founded": 1988, "lean": (.9,1.15), "support": [(1991,6),(1994,7),(1998,29),(2002,41),(2010,53),(2018,49),(2022,54),(2026,39)]},
-    "DK": {"n": "DK", "c": "#5555ff", "founded": 2011, "lean": (1.4,.6), "support": [(2011,3),(2018,6),(2022,12),(2026,4)]},
-    "MKKP": {"n": "MKKP", "c": "#ffff55", "founded": 2006, "lean": (1.6,.5), "support": [(2006,.5),(2018,1.7),(2022,3.2),(2026,2)]},
-    "MIHAZANK": {"n": "Mi Hazánk", "c": "#888888", "founded": 2018, "lean": (.7,1.3), "support": [(2018,1),(2022,6),(2026,6)]},
-    "TISZA": {"n": "Tisza", "c": "#00aaaa", "founded": 2024, "lean": (1.2,.95), "support": [(2024,10),(2025,30),(2026,53),(2028,48)]},
-    "CUSTOM": {"n": "My Party", "c": "#ffffff", "founded": 1991, "lean": (1,1), "support": [(1991,3)]},
-}
-
-LEADERS = {
-    "MDF": ["Antall József — MDF leader and prime minister"],
-    "SZDSZ": ["Kis János — SZDSZ founding leader"],
-    "MSZP": ["Horn Gyula — MSZP leader"],
-    "FKGP": ["Torgyán József — FKGP leader"],
-    "KDNP": ["Surján László — KDNP leader"],
-    "FIDESZ": ["Orbán Viktor — Fidesz founding-generation leader"],
-    "CUSTOM": ["Party founder"],
-}
+"""Small, simplified data set for the game."""
 
 COUNTIES = [
-    ("Budapest","U",16),("Pest","U",12),("Győr-Moson-Sopron","M",6),("Komárom-Esztergom","M",4),
-    ("Fejér","M",5),("Veszprém","M",5),("Vas","R",3),("Zala","R",3),("Somogy","R",4),("Tolna","R",3),
-    ("Baranya","M",4),("Bács-Kiskun","R",6),("Csongrád-Csanád","M",4),("Békés","R",4),
-    ("Jász-Nagykun-Szolnok","R",4),("Heves","M",3),("Nógrád","R",2),("Borsod-Abaúj-Zemplén","R",8),
-    ("Hajdú-Bihar","M",5),("Szabolcs-Szatmár-Bereg","R",5),
+    {"name": "Budapest", "kind": "city", "x": 4, "y": 2},
+    {"name": "Pest", "kind": "mixed", "x": 5, "y": 2},
+    {"name": "Fejér", "kind": "mixed", "x": 4, "y": 3},
+    {"name": "Komárom-Esztergom", "kind": "mixed", "x": 3, "y": 2},
+    {"name": "Veszprém", "kind": "mixed", "x": 3, "y": 3},
+    {"name": "Győr-Moson-Sopron", "kind": "mixed", "x": 2, "y": 2},
+    {"name": "Vas", "kind": "rural", "x": 1, "y": 3},
+    {"name": "Zala", "kind": "rural", "x": 2, "y": 4},
+    {"name": "Somogy", "kind": "rural", "x": 3, "y": 4},
+    {"name": "Baranya", "kind": "mixed", "x": 4, "y": 5},
+    {"name": "Tolna", "kind": "rural", "x": 4, "y": 4},
+    {"name": "Bács-Kiskun", "kind": "mixed", "x": 5, "y": 4},
+    {"name": "Csongrád-Csanád", "kind": "city", "x": 6, "y": 5},
+    {"name": "Békés", "kind": "rural", "x": 7, "y": 5},
+    {"name": "Jász-Nagykun-Szolnok", "kind": "mixed", "x": 6, "y": 3},
+    {"name": "Hajdú-Bihar", "kind": "mixed", "x": 7, "y": 3},
+    {"name": "Szabolcs-Szatmár-Bereg", "kind": "rural", "x": 8, "y": 2},
+    {"name": "Borsod-Abaúj-Zemplén", "kind": "mixed", "x": 7, "y": 1},
+    {"name": "Heves", "kind": "rural", "x": 6, "y": 1},
+    {"name": "Nógrád", "kind": "rural", "x": 5, "y": 1},
 ]
 
-CAMPAIGN = {
-    "posters": ("Posters",5,.4), "tv": ("TV ads",20,1.6), "social": ("Social media",10,.9),
-    "rally": ("Rallies",8,.8), "vol": ("Volunteers",3,.5), "reg": ("Register candidates",30,0),
-    "poll": ("Accurate polling",4,0),
+PARTIES = [
+    {"name": "MDF", "founded": 1987, "color": "#aa3333"},
+    {"name": "SZDSZ", "founded": 1988, "color": "#3366aa"},
+    {"name": "MSZP", "founded": 1989, "color": "#cc5555"},
+    {"name": "FKGP", "founded": 1930, "color": "#338844"},
+    {"name": "KDNP", "founded": 1944, "color": "#886633"},
+    {"name": "Fidesz", "founded": 1988, "color": "#447744"},
+    {"name": "MKKP", "founded": 2006, "color": "#aa66aa"},
+    {"name": "DK", "founded": 2011, "color": "#4477bb"},
+    {"name": "Mi Hazánk", "founded": 2018, "color": "#775533"},
+    {"name": "Tisza", "founded": 2024, "color": "#22aabb"},
+]
+
+LEADERS = {
+    "MDF": ["József Antall — MDF, prime minister"],
+    "SZDSZ": ["János Kis — SZDSZ, party leader"],
+    "MSZP": ["Gyula Horn — MSZP, party leader"],
+    "FKGP": ["József Torgyán — FKGP, party leader"],
+    "KDNP": ["László Surján — KDNP, party leader"],
+    "Fidesz": ["Viktor Orbán — Fidesz, party leader"],
 }
+
+CAMPAIGNS = [
+    {"id": "posters", "name": "Posters", "cost": 8, "effect": 1.0, "target": "rural"},
+    {"id": "tv", "name": "TV campaign", "cost": 20, "effect": 1.8, "target": "mixed"},
+    {"id": "social", "name": "Social media", "cost": 12, "effect": 1.7, "target": "city"},
+    {"id": "rallies", "name": "Rallies", "cost": 15, "effect": 1.5, "target": "mixed"},
+    {"id": "volunteers", "name": "Volunteers", "cost": 10, "effect": 1.4, "target": "rural"},
+    {"id": "candidates", "name": "Candidate registration", "cost": 16, "effect": 1.2, "target": "mixed"},
+    {"id": "polling", "name": "Polling", "cost": 9, "effect": 0.6, "target": "city"},
+]
 
 POLICIES = [
-    policy("tax","Cut income tax",2,15,.5,.4,.2,"Workers","Public services"),
-    policy("health","Fund hospitals",2,20,.7,.2,.6,"Patients and rural towns","Taxpayers"),
-    policy("edu","Raise teacher pay",2,15,.5,.4,.3,"Teachers and families","The budget"),
-    policy("eu","Seek an EU funds deal",3,5,.6,.6,-.2,"Cities and business","Sovereignty-minded voters"),
-    policy("energy","Invest in energy",3,25,.4,.2,.3,"Industry","Short-term bills"),
-    policy("media","Reform public media",3,5,.3,.5,-.4,"Pluralism supporters","Fans of existing coverage"),
-    policy("anti","Anti-corruption office",3,10,.6,.5,.2,"Taxpayers","People concerned about disruption"),
-    policy("immig","Tighten border rules",2,5,.4,-.3,.6,"Security-minded voters","Employers needing workers"),
-    policy("house","Build affordable housing",3,25,.6,.7,-.1,"Young renters","Property owners and taxpayers"),
-    policy("fuel","Cap fuel prices",2,15,.5,-.2,.6,"Drivers","Climate goals and the budget"),
+    {"id": "economy", "name": "Economic investment", "cost": 20, "capital": 2, "effects": {"support": 1, "budget": -12}},
+    {"id": "healthcare", "name": "Healthcare", "cost": 18, "capital": 2, "effects": {"support": 2, "budget": -10}},
+    {"id": "education", "name": "Education", "cost": 16, "capital": 2, "effects": {"support": 1, "budget": -9}},
+    {"id": "eu", "name": "EU relations", "cost": 12, "capital": 1, "effects": {"support": 1, "budget": -5}},
+    {"id": "energy", "name": "Energy transition", "cost": 18, "capital": 2, "effects": {"support": 1, "budget": -11}},
+    {"id": "media", "name": "Media standards", "cost": 10, "capital": 2, "effects": {"support": 1, "budget": -4}},
+    {"id": "anticorruption", "name": "Anti-corruption measures", "cost": 14, "capital": 2, "effects": {"support": 2, "budget": -6}},
+    {"id": "immigration", "name": "Migration policy", "cost": 10, "capital": 1, "effects": {"support": 1, "budget": -3}},
+    {"id": "housing", "name": "Housing", "cost": 17, "capital": 2, "effects": {"support": 2, "budget": -10}},
+    {"id": "taxes", "name": "Tax reform", "cost": 8, "capital": 2, "effects": {"support": 1, "budget": 3}},
 ]
 
-EVENTS = [
-    event("transition",1993,1,"Economic transition","Hungary continues its transition to a market economy.",
-          ("Support faster reforms",{"b":-.3,"U":.3,"c":2}), ("Favor a gradual approach",{"b":.3,"R":.3})),
-    event("nato",1999,3,"Hungary joins NATO","A significant change in Hungary's security relationships.",
-          ("Welcome the membership",{"b":.5}), ("Debate the costs",{"m":10,"R":.2})),
-    event("eu",2004,5,"Hungary joins the European Union","EU membership brings new opportunities and policy debates.",
-          ("Focus on EU cooperation",{"b":.6,"U":.3}), ("Emphasize national decision-making",{"b":.4,"R":.3})),
-    event("crisis",2008,10,"Global financial crisis","The global crisis puts pressure on households and public finances.",
-          ("Prioritize spending restraint",{"b":-.4,"c":2}), ("Support an economic stimulus",{"m":-15,"b":.5})),
-    event("migration",2015,9,"Migration crisis","Migration becomes a major subject of public debate.",
-          ("Emphasize border security",{"R":.5,"U":-.3}), ("Emphasize humanitarian support",{"U":.4,"R":-.4})),
-    event("covid",2020,3,"COVID-19","The pandemic creates difficult public health and economic choices.",
-          ("Support stricter public-health rules",{"b":.3}), ("Emphasize individual choice",{"b":.3,"R":.2})),
-    event("ukraine",2022,2,"War in Ukraine","The war next door creates difficult security and foreign-policy choices.",
-          ("Support stronger sanctions",{"U":.4,"R":-.2}), ("Prioritize diplomacy",{"R":.4,"U":-.2})),
+MENTORS = [
+    {"name": "Magyar Péter", "bonus": "Small bonus to anti-corruption and volunteer actions.",
+     "facts": "Resigned from Fidesz in 2024 and founded Tisza in 2024. The supplied brief says he led it to a two-thirds majority in April 2026 and became prime minister in May 2026."},
+    {"name": "József Antall", "bonus": "Small bonus to education and policy actions.",
+     "facts": "Supporters admire his role in the democratic transition. Critics discuss the challenges and policy choices of his government."},
+    {"name": "Gyula Horn", "bonus": "Small bonus to coalition and campaign actions.",
+     "facts": "Supporters admire his political experience. Critics debate the decisions and legacy of his public career."},
 ]
-
-MENTORS = {
-    "magyar": {"n":"Magyar Péter","bonus":{"anti":.6,"vol":.4},
-        "facts":["Resigned from Fidesz in 2024","Founded Tisza in 2024","Led Tisza to a two-thirds majority in April 2026","Became prime minister in May 2026"],
-        "learn":"Supporters admire his anti-corruption message and challenge to a long-ruling government. Critics note his years as a Fidesz insider and question how different his government will be."},
-    "antall": {"n":"Antall József","bonus":{"cap":.2},
-        "facts":["First prime minister after the 1990 free elections","Led the MDF"],
-        "learn":"Supporters admire his leadership through the post-communist transition. Critics point to economic difficulties and the pace of reform during the period."},
-    "horn": {"n":"Horn Gyula","bonus":{"tv":.3},
-        "facts":["Prime minister from 1994 to 1998","Led the MSZP"],
-        "learn":"Supporters credit him with economic stabilization and Hungary's path toward NATO and EU membership. Critics point to the unpopular austerity package of 1995."},
-    "orban": {"n":"Orbán Viktor","bonus":{"vol":.2,"tv":.2},
-        "facts":["Prime minister during 1998–2002 and 2010–2026","Leader of Fidesz"],
-        "learn":"Supporters value his emphasis on national sovereignty and family policy. Critics argue that his governments weakened checks and balances and tolerated corruption."},
-}
